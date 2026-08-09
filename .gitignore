@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local databases and large assets
+*.db
+*.db-journal
+test_screenshot.png
+
