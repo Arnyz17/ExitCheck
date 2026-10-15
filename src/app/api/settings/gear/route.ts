@@ -31,7 +31,8 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-    await prisma.gearItem.delete({ where: { id } });
+    const userId = await resolveUserId();
+    await prisma.gearItem.deleteMany({ where: { id, userId } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting gear item:', error);

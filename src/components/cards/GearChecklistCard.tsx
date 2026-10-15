@@ -1,87 +1,84 @@
 "use client";
 
-import React, { useState } from "react";
-import { Backpack, Check } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 
 interface Props {
   gear: string[];
 }
 
+const STORAGE_KEY = "exitcheck.gear.checked";
+
 export default function GearChecklistCard({ gear }: Props) {
-  const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set());
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+
+  // Restore ticks so a refresh doesn't undo them (cleared when the day changes).
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (saved?.day === new Date().toDateString()) setChecked(new Set(saved.items));
+    } catch {}
+  }, []);
 
   if (!gear || gear.length === 0) return null;
 
-  const toggleItem = (idx: number) => {
-    // Cross-platform safe haptics
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+  const toggle = (item: string) => {
+    try {
+      navigator.vibrate?.(20);
+    } catch {}
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(item)) next.delete(item);
+      else next.add(item);
       try {
-        navigator.vibrate(50);
-      } catch (err) {
-        // Ignore haptics failure gracefully on platforms that don't support it
-      }
-    }
-
-    setCheckedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(idx)) {
-        newSet.delete(idx);
-      } else {
-        newSet.add(idx);
-      }
-      return newSet;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ day: new Date().toDateString(), items: [...next] }));
+      } catch {}
+      return next;
     });
   };
 
-  const allChecked = checkedItems.size === gear.length && gear.length > 0;
+  const done = gear.filter((g) => checked.has(g)).length;
+  const allDone = done === gear.length;
 
   return (
-    <div
-      className={`border rounded-2xl p-4 transition-colors duration-300 ${
-        allChecked
-          ? "bg-emerald-950/20 border-emerald-900/50"
-          : "bg-slate-800/60 border-slate-700/50"
-      }`}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-2">
-          <Backpack className="w-4 h-4 text-slate-400" />
-          Required Gear
-        </h2>
-        <span className="text-xs font-medium text-slate-400">
-          {checkedItems.size} / {gear.length}
+    <section className="card p-4">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[17px] font-semibold">Don&apos;t forget</h2>
+        <span className="text-[13px] font-medium" style={{ color: allDone ? "var(--green)" : "var(--text-2)" }}>
+          {allDone ? "All packed" : `${done} of ${gear.length}`}
         </span>
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {gear.map((item, idx) => {
-          const isChecked = checkedItems.has(idx);
+      <ul>
+        {gear.map((item, i) => {
+          const on = checked.has(item);
           return (
-            <button
-              key={idx}
-              onClick={() => toggleItem(idx)}
-              className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 text-left ${
-                isChecked
-                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                  : "bg-slate-900/50 border border-transparent text-slate-300 active:bg-slate-700"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors flex-shrink-0 ${
-                  isChecked
-                    ? "bg-emerald-500 border-emerald-500 text-white"
-                    : "border-slate-600 bg-slate-800"
-                }`}
+            <li key={item} style={i > 0 ? { borderTop: "1px solid var(--line)" } : undefined}>
+              <button
+                onClick={() => toggle(item)}
+                role="checkbox"
+                aria-checked={on}
+                className="w-full flex items-center gap-3.5 py-3 text-left"
               >
-                {isChecked && <Check className="w-3.5 h-3.5" />}
-              </div>
-              <span className={`text-sm font-medium leading-tight ${isChecked ? "line-through opacity-70" : ""}`}>
-                {item}
-              </span>
-            </button>
+                <span
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors"
+                  style={{
+                    background: on ? "var(--green)" : "transparent",
+                    border: on ? "none" : "1.5px solid var(--text-3)",
+                  }}
+                >
+                  {on && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
+                </span>
+                <span
+                  className="text-[16px]"
+                  style={{ color: on ? "var(--text-3)" : "var(--text)", textDecoration: on ? "line-through" : "none" }}
+                >
+                  {item}
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }

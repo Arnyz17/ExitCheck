@@ -1,0 +1,9 @@
+{
+  "name": "ExitCheck",
+  "short_name": "ExitCheck",
+  "description": "Everything you need to know before you walk out the door.",
+  "start_url": "/exit",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7"
+}

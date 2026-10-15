@@ -208,7 +208,7 @@ export async function POST(request: Request) {
     let finalResponse;
     try {
       const { object } = await generateObject({
-        model: google('gemini-1.5-flash'),
+        model: google('gemini-2.0-flash'),
         schema: ExitCheckResponseSchema,
         prompt: `
           You are the ExitCheck AI Orchestration Agent. 

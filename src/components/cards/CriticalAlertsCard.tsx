@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, Flame, BatteryWarning, Info } from "lucide-react";
+import { AlertTriangle, Flame, BatteryWarning, Info, LucideIcon } from "lucide-react";
 
 interface Alert {
   id: string;
@@ -9,57 +9,34 @@ interface Alert {
   action: string;
 }
 
-interface Props {
-  alerts: Alert[];
-}
+const ICONS: Record<string, LucideIcon> = {
+  flame: Flame,
+  "battery-charging": BatteryWarning,
+  "alert-triangle": AlertTriangle,
+};
 
-export default function CriticalAlertsCard({ alerts }: Props) {
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case "flame":
-        return <Flame className="w-6 h-6 text-red-500 flex-shrink-0" />;
-      case "battery-charging":
-        return <BatteryWarning className="w-6 h-6 text-red-500 flex-shrink-0" />;
-      case "alert-triangle":
-        return <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />;
-      default:
-        return <Info className="w-6 h-6 text-blue-500 flex-shrink-0" />;
-    }
-  };
-
+export default function CriticalAlertsCard({ alerts }: { alerts: Alert[] }) {
   return (
-    <div className="flex flex-col gap-3">
-      {alerts.map((alert) => (
-        <div
-          key={alert.id}
-          className={`flex items-start gap-4 p-4 rounded-2xl border ${
-            alert.severity === "CRITICAL"
-              ? "bg-red-950/40 border-red-900/50"
-              : "bg-amber-950/40 border-amber-900/50"
-          }`}
-        >
-          <div className="mt-1">{getIcon(alert.icon)}</div>
-          <div className="flex flex-col">
-            <h3
-              className={`text-lg font-semibold leading-tight ${
-                alert.severity === "CRITICAL" ? "text-red-400" : "text-amber-400"
-              }`}
-            >
-              {alert.severity} ALERT
-            </h3>
-            <p className="text-slate-200 mt-1">{alert.message}</p>
-            <div
-              className={`mt-3 inline-block px-3 py-1.5 rounded-lg text-sm font-bold tracking-wide ${
-                alert.severity === "CRITICAL"
-                  ? "bg-red-500/20 text-red-300"
-                  : "bg-amber-500/20 text-amber-300"
-              }`}
-            >
-              ACT: {alert.action}
+    <section className="flex flex-col gap-3" aria-label="Alerts">
+      {alerts.map((alert) => {
+        const urgent = alert.severity === "CRITICAL";
+        const color = urgent ? "var(--red)" : alert.severity === "LOW" ? "var(--blue)" : "var(--orange)";
+        const soft = urgent ? "var(--red-soft)" : alert.severity === "LOW" ? "var(--blue-soft)" : "var(--orange-soft)";
+        const Icon = ICONS[alert.icon] ?? Info;
+        return (
+          <div key={alert.id} className="card p-4 flex items-start gap-3.5" role="alert">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: soft }}>
+              <Icon className="w-6 h-6" style={{ color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[17px] font-semibold leading-snug">{alert.message}</p>
+              <p className="text-[15px] mt-0.5" style={{ color }}>
+                {alert.action}
+              </p>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
+        );
+      })}
+    </section>
   );
 }

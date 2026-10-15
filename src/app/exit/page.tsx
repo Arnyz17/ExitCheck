@@ -1,102 +1,114 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import HUD from "@/components/HUD";
 import { ExitCheckResponse } from "@/lib/schema";
 
 function ExitClient() {
   const searchParams = useSearchParams();
   const tag_id = searchParams.get("tag_id") || "door_main";
-  const { data: session } = useSession();
+  const urlUserId = searchParams.get("user_id");
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id || urlUserId || "usr_123";
 
   const [data, setData] = useState<ExitCheckResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const inFlight = useRef(false);
+
+  const load = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setRefreshing(true);
+
+    let batteryLevel: number | null = null;
+    let isCharging: boolean | null = null;
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    try {
+      // @ts-expect-error: getBattery is not in the standard DOM typings
+      const battery = await navigator.getBattery?.();
+      if (battery) {
+        batteryLevel = battery.level;
+        isCharging = battery.charging;
+      }
+    } catch {}
+
+    try {
+      if ("geolocation" in navigator) {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, maximumAge: 60000 })
+        );
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+      }
+    } catch {}
+
+    try {
+      const response = await fetch("/api/exit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag_id, user_id: userId, batteryLevel, isCharging, latitude, longitude }),
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData?.details || errData?.error || "The server didn't respond.");
+      }
+      setData(await response.json());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      inFlight.current = false;
+    }
+  }, [tag_id, userId]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      // Resolve user_id: prefer session user, then URL param, then fallback
-      const urlUserId = searchParams.get("user_id");
-      const user_id = session?.user?.id || urlUserId || "usr_123";
+    if (status === "loading") return;
+    load();
+  }, [load, status]);
 
-      let batteryLevel: number | null = null;
-      let isCharging: boolean | null = null;
-
-      try {
-        if ("getBattery" in navigator) {
-          // @ts-expect-error: getBattery is not standardized in all TS DOM types
-          const battery = await navigator.getBattery();
-          batteryLevel = battery.level;
-          isCharging = battery.charging;
-        }
-      } catch (err) {
-        console.warn("Battery API unavailable or failed", err);
-      }
-
-      let latitude: number | null = null;
-      let longitude: number | null = null;
-
-      try {
-        if ("geolocation" in navigator) {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          latitude = pos.coords.latitude;
-          longitude = pos.coords.longitude;
-        }
-      } catch (err) {
-        console.warn("Geolocation denied or unavailable", err);
-      }
-
-      try {
-        const response = await fetch("/api/exit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tag_id, user_id, batteryLevel, isCharging, latitude, longitude }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData?.details || errData?.error || "Failed to fetch HUD data");
-        }
-
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [tag_id, session]);
-
-  if (error) {
+  if (error && !data) {
     return (
-      <div className="flex h-screen w-full items-center justify-center p-6 text-center bg-slate-900">
+      <div className="flex min-h-screen w-full items-center justify-center p-6 text-center">
         <div className="max-w-sm">
-          <p className="text-red-400 text-lg font-semibold mb-2">⚠️ HUD Load Error</p>
-          <p className="text-slate-400 text-sm">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 rounded-lg text-white text-sm hover:bg-blue-500"
-          >
-            Retry
-          </button>
+          <h1 className="text-[22px] font-semibold">Couldn&apos;t load your check</h1>
+          <p className="text-[15px] mt-2" style={{ color: "var(--text-2)" }}>
+            {error}
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                load();
+              }}
+              className="btn"
+            >
+              Try again
+            </button>
+            <Link href="/settings" className="btn btn-quiet">
+              Settings
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  return <HUD data={data} loading={loading} />;
+  return <HUD data={data} loading={loading} refreshing={refreshing} onRefresh={load} />;
 }
 
 export default function ExitPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-900 text-slate-400">Loading...</div>}>
+    <Suspense fallback={null}>
       <ExitClient />
     </Suspense>
   );
