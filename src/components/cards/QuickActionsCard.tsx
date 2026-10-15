@@ -50,7 +50,7 @@ export default function QuickActionsCard({ actions }: { actions: QuickAction[] }
 
   return (
     <section>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid gap-3 ${actions.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
         {actions.map((action) => {
           const s = state[action.id] ?? "idle";
           const Icon = ICONS[action.icon] ?? Power;

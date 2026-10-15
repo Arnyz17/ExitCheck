@@ -6,7 +6,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function fetchGoogleCalendar(userId: string) {
   try {
     const account = await prisma.account.findFirst({
-      where: { provider: "google" }
+      where: { provider: "google", userId }
     });
 
     if (!account || !account.access_token) {
@@ -63,13 +63,11 @@ export async function fetchCommuteEngine(lat?: number, lon?: number, homeAddress
   try {
     let originLat = lat;
     let originLon = lon;
-    let originLabel = "Current Location";
     let originString = originLat && originLon ? `${originLat},${originLon}` : "";
 
     // Fallback: If no GPS provided, assume they are at Home
     if (!originLat || !originLon) {
       if (!homeAddress) throw new Error("No GPS and no Home Address set");
-      originLabel = "Home";
       const originGeocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(sanitizeAddress(homeAddress))}&format=json&limit=1`;
       const originRes = await fetch(originGeocodeUrl, { headers: { "User-Agent": "ExitCheck-App/1.0" } });
       const originData = await originRes.json();
@@ -153,10 +151,6 @@ export async function fetchCommuteEngine(lat?: number, lon?: number, homeAddress
 
 export async function fetchSmartHomeState() {
   await delay(300);
-  // Simulating a random API failure on Smart Home to demonstrate fault tolerance 20% of the time
-  if (Math.random() > 0.8) {
-    throw new Error("Smart Home Hub Timeout");
-  }
   return {
     sensors: [
       { id: "door_main", status: "LOCKED" },
@@ -230,6 +224,6 @@ export async function fetchWeather(userId: string, lat?: number, lon?: number) {
     };
   } catch (error) {
     console.error('Weather fetch failed:', error);
-    return { current_temp: 75, forecast: 'Clear', high: 80, low: 65, precipitation_chance: 0 };
+    throw error;
   }
 }

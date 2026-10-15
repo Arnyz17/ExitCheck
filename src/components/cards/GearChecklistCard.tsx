@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Check } from "lucide-react";
 
 interface Props {
@@ -10,15 +10,14 @@ interface Props {
 const STORAGE_KEY = "exitcheck.gear.checked";
 
 export default function GearChecklistCard({ gear }: Props) {
-  const [checked, setChecked] = useState<Set<string>>(new Set());
-
-  // Restore ticks so a refresh doesn't undo them (cleared when the day changes).
-  useEffect(() => {
+  // Ticks persist across refreshes and reset when the day changes.
+  const [checked, setChecked] = useState<Set<string>>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      if (saved?.day === new Date().toDateString()) setChecked(new Set(saved.items));
+      if (saved?.day === new Date().toDateString()) return new Set<string>(saved.items);
     } catch {}
-  }, []);
+    return new Set<string>();
+  });
 
   if (!gear || gear.length === 0) return null;
 
