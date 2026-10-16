@@ -19,7 +19,8 @@ export interface SynthesisInput {
   actions: Action[];
   weatherEnabled: boolean;
   homeEnabled: boolean;
-  calendar: { next_event?: string; event_time?: string; error?: string } | null;
+  calendar: { next_event?: string; event_time?: string; start_iso?: string | null; error?: string } | null;
+  now?: Date;
   routes: CommuteRoute[];
   smartHome: {
     sensors: { id: string; status: string }[];
@@ -60,6 +61,19 @@ export function readiness(alerts: Pick<Alert, "severity">[]) {
   const score = Math.max(0, Math.min(100, base));
   const label = score >= 90 ? "Ready to go" : score >= 70 ? "Almost there" : score >= 40 ? "Needs attention" : "Hold on";
   return { score, label };
+}
+
+export const ARRIVAL_BUFFER_MIN = 10;
+
+/** When to walk out so you arrive ARRIVAL_BUFFER_MIN early, using the fastest of driving and transit. */
+export function leaveBy(startIso: string | null | undefined, routes: CommuteRoute[]) {
+  if (!startIso) return null;
+  const route = routes.find((r) => r.raw_destination && r.driving.time > 0);
+  if (!route) return null;
+  const start = new Date(startIso).getTime();
+  if (Number.isNaN(start)) return null;
+  const travel = Math.min(route.driving.time, route.transit.time);
+  return new Date(start - (travel + ARRIVAL_BUFFER_MIN) * 60_000).toISOString();
 }
 
 /** Deterministic HUD built straight from the live data. Used when no AI key is set or the model call fails. */
@@ -145,6 +159,7 @@ export function synthesize(input: SynthesisInput): ExitCheckResponse {
         next_event: hasEvent ? input.calendar!.next_event! : null,
         event_time: hasEvent ? input.calendar!.event_time || "N/A" : "N/A",
         destinations: commuteDestinations(input.routes),
+        leave_by: hasEvent ? leaveBy(input.calendar?.start_iso, input.routes) : null,
         recommendation,
       },
       smart_home_check: !input.homeEnabled

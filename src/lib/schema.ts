@@ -42,6 +42,7 @@ export const ExitCheckResponseSchema = z.object({
           })
         })
       ).describe("List of calculated commute routes (usually Home and Work)"),
+      leave_by: z.string().nullable().optional().describe("ISO time the user must leave to arrive on time"),
       recommendation: z.string().describe("A brief, actionable directive (e.g. 'LEAVE NOW via Car for Work')"),
     }),
     smart_home_check: z.object({

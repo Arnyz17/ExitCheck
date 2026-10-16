@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Car, Bus, Footprints, LucideIcon } from "lucide-react";
 import { ExitCheckResponse } from "@/lib/schema";
@@ -29,6 +29,26 @@ const mapsUrl = (origin: string, dest: string, mode: "driving" | "transit" | "wa
   return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=${mode}`;
 };
 
+function LeaveBy({ iso }: { iso: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+  const mins = Math.round((new Date(iso).getTime() - now) / 60000);
+  const late = mins < 0;
+  const color = late ? "var(--red)" : mins <= 10 ? "var(--orange)" : "var(--green)";
+  const at = new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return (
+    <div className="mt-6">
+      <p className="eyebrow">Leave by {at}</p>
+      <p className="text-[44px] sm:text-[56px] leading-none font-semibold tracking-[-0.04em] mt-2" style={{ color }}>
+        {late ? `${Math.abs(mins)} min late` : mins === 0 ? "Now" : `in ${mins} min`}
+      </p>
+    </div>
+  );
+}
+
 export default function CommuteCard({ commute }: { commute: ExitCheckResponse["sections"]["calendar_commute"] }) {
   if (!commute) return null;
   const destinations = (commute.destinations ?? []).filter((d) => d.raw_destination);
@@ -53,6 +73,8 @@ export default function CommuteCard({ commute }: { commute: ExitCheckResponse["s
             </div>
           </div>
         )}
+
+        {commute.leave_by && <LeaveBy iso={commute.leave_by} />}
 
         {commute.recommendation && (
           <p className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-6">{commute.recommendation}</p>

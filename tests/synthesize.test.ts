@@ -97,3 +97,36 @@ describe("readiness", () => {
     expect(readiness([{ severity: "HIGH" }]).label).toBe("Almost there");
   });
 });
+
+import { leaveBy } from "@/lib/synthesize";
+import { turnBack } from "@/lib/turnback";
+
+const r = { label: "Work", raw_origin: "a", raw_destination: "b", driving: { time: 20, condition: "" }, transit: { time: 35, condition: "" }, walking: { time: 200 } };
+
+describe("leaveBy", () => {
+  it("subtracts travel time and a 10 minute buffer", () => {
+    const out = leaveBy("2026-01-01T09:00:00.000Z", [r]);
+    expect(out).toBe("2026-01-01T08:30:00.000Z");
+  });
+  it("returns null without an event or route", () => {
+    expect(leaveBy(null, [r])).toBeNull();
+    expect(leaveBy("2026-01-01T09:00:00.000Z", [])).toBeNull();
+  });
+});
+
+describe("turnBack", () => {
+  it("says go back when there is enough slack", () => {
+    const out = turnBack({ curToHome: 5, homeToDest: 25, curToDest: 22, minutesLeft: 45 });
+    expect(out.extraMinutes).toBe(8);
+    expect(out.verdict).toBe("turn_back");
+    expect(out.spareIfTurn).toBe(15);
+  });
+  it("says keep going when the detour makes you late", () => {
+    const out = turnBack({ curToHome: 10, homeToDest: 30, curToDest: 25, minutesLeft: 30 });
+    expect(out.verdict).toBe("keep_going");
+    expect(out.spareIfTurn).toBe(-10);
+  });
+  it("still answers with no deadline", () => {
+    expect(turnBack({ curToHome: 6, homeToDest: 20, curToDest: 18, minutesLeft: null }).verdict).toBe("no_deadline");
+  });
+});

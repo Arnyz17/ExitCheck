@@ -10,7 +10,7 @@ No account needed to try it. Open the app and it works.
 npm install
 npx prisma db push
 npm run dev          # http://localhost:3000
-npm test             # 16 unit tests
+npm test             # 21 unit tests
 ```
 
 Optional environment variables (`.env.local`):
@@ -28,6 +28,11 @@ Optional environment variables (`.env.local`):
 - **Services**: Google Calendar (OAuth), Weather (Open-Meteo), and your own quick actions via webhook (Home Assistant, IFTTT, Zapier), Apple Shortcut, or app link.
 - **Insights**: checks run, problems caught, estimated time saved, clean-exit streak, p50/p95 latency, per-source reliability, and a waterfall trace of the latest request.
 - **You**: name, accent color, home and work addresses, things to bring.
+
+## The two features that are genuinely new
+
+- **"Forgot something?" turn-back calculator.** After you've left, one tap reads your location and compares the detour (you -> home -> destination) against the time left before your next event. It answers "go back, you'll still be 15 min early" or "keep going, turning back makes you 10 min late", instead of leaving you to guess.
+- **Live leave-by countdown.** Combines your next calendar event, real routing time and a 10-minute arrival buffer into a ticking "Leave in 12 min" that turns orange and red as the window closes.
 
 ## How it works
 
@@ -70,5 +75,6 @@ Next.js 16, React 19, TypeScript, Tailwind v4, Framer Motion, Prisma + SQLite, N
 
 - Built an NFC-triggered "leave-the-house" dashboard (Next.js, TypeScript, Prisma/SQLite) that fans out to five data sources in parallel, with per-source fault isolation, geocode caching and a rule-based fallback so every tap returns a valid screen.
 - Added an LLM summarization layer (Gemini via Vercel AI SDK, Zod-validated output) with a timeout and circuit breaker, and re-injected authoritative data after generation to prevent hallucinated commute and weather facts.
-- Instrumented every request with latency/success tracing and built an Insights dashboard (p50/p95, source reliability, request waterfall); wrote 16 unit tests covering the rule engine, scoring and analytics.
+- Instrumented every request with latency/success tracing and built an Insights dashboard (p50/p95, source reliability, request waterfall); wrote 21 unit tests covering the rule engine, scoring and analytics.
 - Designed a personalized, animated Apple-style UI with per-sticker checklists, webhook/Shortcut/deep-link actions, and Google OAuth Calendar integration.
+- Built a turn-back decision engine that routes you -> home -> destination with OSRM and compares the detour to calendar slack to say whether going back for a forgotten item is worth it.

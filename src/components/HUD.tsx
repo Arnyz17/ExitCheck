@@ -6,6 +6,7 @@ import { RefreshCw, Nfc } from "lucide-react";
 import { ExitCheckResponse } from "@/lib/schema";
 import Rise from "./Rise";
 import Welcome from "./Welcome";
+import TurnBack from "./TurnBack";
 import CriticalAlertsCard from "./cards/CriticalAlertsCard";
 import CommuteCard from "./cards/CommuteCard";
 import HomeSecurityCard from "./cards/HomeSecurityCard";
@@ -154,6 +155,9 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
           <HomeSecurityCard security={data.sections.smart_home_check} />
           <div className="md:col-span-2 empty:hidden">
             <CommuteCard commute={data.sections.calendar_commute} />
+          </div>
+          <div className="md:col-span-2">
+            <TurnBack userId={userId} />
           </div>
           <GearChecklistCard gear={data.sections.required_gear_checklist} />
           <ShoppingCard shopping={data.sections.errands_and_shopping} />

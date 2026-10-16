@@ -41,6 +41,7 @@ export async function fetchGoogleCalendar(userId: string) {
     return {
       next_event: nextEvent.summary || "Busy",
       event_time: formattedTime,
+      start_iso: nextEvent.start?.dateTime ?? null,
       location: nextEvent.location || "No location specified",
       description: nextEvent.description ? "Has details" : "No details",
     };
@@ -53,7 +54,7 @@ export async function fetchGoogleCalendar(userId: string) {
 // Geocoding is the slowest step and addresses rarely change, so results are cached in memory.
 const geocodeCache = new Map<string, { lat: number; lon: number } | null>();
 
-async function geocode(address: string) {
+export async function geocode(address: string) {
   const key = sanitizeAddress(address).toLowerCase();
   if (geocodeCache.has(key)) return geocodeCache.get(key)!;
   const res = await fetch(
@@ -235,4 +236,14 @@ export async function fetchWeather(userId: string, lat?: number, lon?: number) {
     console.error('Weather fetch failed:', error);
     throw error;
   }
+}
+
+/** Driving minutes between two points via OSRM. */
+export async function drivingMinutes(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`, {
+    signal: AbortSignal.timeout(6000),
+  });
+  const data = await res.json();
+  if (data.code !== "Ok" || !data.routes?.length) throw new Error("Routing is unavailable right now.");
+  return Math.round(data.routes[0].duration / 60);
 }
