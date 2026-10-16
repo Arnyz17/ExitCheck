@@ -4,6 +4,10 @@ export const ExitCheckResponseSchema = z.object({
   status: z.string(),
   timestamp: z.string(),
   display_theme: z.enum(['alert_warning', 'normal', 'success', 'critical']),
+  readiness: z.object({ score: z.number(), label: z.string() }).optional(),
+  tag_count: z.number().optional(),
+  user_name: z.string().nullable().optional(),
+  tag: z.object({ name: z.string(), location: z.string() }).nullable().optional(),
   sections: z.object({
     critical_alerts: z.array(z.object({
       id: z.string(),
@@ -17,7 +21,9 @@ export const ExitCheckResponseSchema = z.object({
         id: z.string().describe("Unique identifier for the action (e.g. tesla_climate, garage_toggle)"),
         label: z.string().describe("Short action label, max 3 words"),
         icon: z.string().describe("Lucide icon name (e.g. 'car', 'door-open', 'power')"),
-        endpoint: z.string().describe("API endpoint path to trigger the action, e.g. /api/actions"),
+        endpoint: z.string().describe("API endpoint path to trigger the action"),
+        kind: z.enum(['webhook', 'shortcut', 'link']).optional(),
+        href: z.string().optional().describe("URL opened on the device for shortcut and link actions"),
       })
     ).optional(),
     calendar_commute: z.object({
@@ -48,6 +54,7 @@ export const ExitCheckResponseSchema = z.object({
       items: z.array(z.string()),
     }),
     weather_directive: z.object({
+      current_temp: z.number().optional(),
       temp_range: z.string(),
       condition: z.string(),
       action: z.string(),

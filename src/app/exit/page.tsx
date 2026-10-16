@@ -20,7 +20,7 @@ function ExitClient() {
   const [refreshing, setRefreshing] = useState(false);
   const inFlight = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (scan = false) => {
     if (inFlight.current) return;
     inFlight.current = true;
     setRefreshing(true);
@@ -41,9 +41,13 @@ function ExitClient() {
 
     try {
       if ("geolocation" in navigator) {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, maximumAge: 60000 })
-        );
+        // Never let a pending permission prompt hold up the screen.
+        const pos = await Promise.race([
+          new Promise<GeolocationPosition>((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 2500, maximumAge: 60000 })
+          ),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 2800)),
+        ]);
         latitude = pos.coords.latitude;
         longitude = pos.coords.longitude;
       }
@@ -53,7 +57,7 @@ function ExitClient() {
       const response = await fetch("/api/exit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tag_id, user_id: userId, batteryLevel, isCharging, latitude, longitude }),
+        body: JSON.stringify({ tag_id, user_id: userId, batteryLevel, isCharging, latitude, longitude, scan }),
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -72,12 +76,12 @@ function ExitClient() {
 
   useEffect(() => {
     if (status === "loading") return;
-    load();
+    load(true);
   }, [load, status]);
 
   if (error && !data) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center p-6 text-center">
+      <div className="flex min-h-[70vh] w-full items-center justify-center p-6 text-center">
         <div className="max-w-sm">
           <h1 className="text-[22px] font-semibold">Couldn&apos;t load your check</h1>
           <p className="text-[15px] mt-2" style={{ color: "var(--text-2)" }}>
@@ -88,13 +92,13 @@ function ExitClient() {
               onClick={() => {
                 setError(null);
                 setLoading(true);
-                load();
+                load(false);
               }}
-              className="btn"
+              className="pill"
             >
               Try again
             </button>
-            <Link href="/settings" className="btn btn-quiet">
+            <Link href="/settings" className="pill pill-plain">
               Settings
             </Link>
           </div>
@@ -103,7 +107,7 @@ function ExitClient() {
     );
   }
 
-  return <HUD data={data} loading={loading} refreshing={refreshing} onRefresh={load} />;
+  return <HUD data={data} loading={loading} refreshing={refreshing} onRefresh={() => load(false)} userId={userId} />;
 }
 
 export default function ExitPage() {

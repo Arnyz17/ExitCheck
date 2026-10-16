@@ -1,25 +1,39 @@
+"use client";
+
 import React from "react";
-import { CloudSun } from "lucide-react";
+import { Sun, Cloud, CloudSun, CloudRain, CloudSnow, CloudLightning, CloudFog, LucideIcon } from "lucide-react";
 import { ExitCheckResponse } from "@/lib/schema";
+import Rise from "../Rise";
 
-interface Props {
-  weather: ExitCheckResponse["sections"]["weather_directive"];
-}
+const ICONS: Record<string, LucideIcon> = { thunder: CloudLightning, snow: CloudSnow, rain: CloudRain, fog: CloudFog, partly: CloudSun, cloud: Cloud, clear: Sun };
 
-export default function WeatherCard({ weather }: Props) {
-  if (!weather || (!weather.condition && !weather.action)) return null;
+const kind = (c: string) => {
+  const s = c.toLowerCase();
+  return ["thunder", "snow", "rain", "fog", "partly", "cloud"].find((k) => s.includes(k)) ?? "clear";
+};
+
+export default function WeatherCard({ weather }: { weather: ExitCheckResponse["sections"]["weather_directive"] }) {
+  if (!weather || !weather.condition) return null;
+  const Icon = ICONS[kind(weather.condition)];
 
   return (
-    <section className="card p-4 flex items-center gap-4">
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--blue-soft)" }}>
-        <CloudSun className="w-6 h-6" style={{ color: "var(--blue)" }} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[17px] font-semibold leading-snug">{weather.condition}</p>
-        <p className="text-[14px] mt-0.5" style={{ color: "var(--text-2)" }}>
-          {[weather.temp_range, weather.action].filter(Boolean).join(" · ")}
-        </p>
-      </div>
-    </section>
+    <Rise>
+      <section className="tile p-7 h-full flex flex-col justify-between min-h-[200px]">
+        <div className="flex items-start justify-between">
+          <p className="eyebrow">Weather</p>
+          <Icon className="w-9 h-9" style={{ color: "var(--blue)" }} strokeWidth={1.5} />
+        </div>
+        <div className="mt-6">
+          {weather.current_temp !== undefined && (
+            <p className="text-[64px] leading-none font-semibold tracking-[-0.04em]">{weather.current_temp}°</p>
+          )}
+          <p className="text-[19px] font-semibold mt-2">{weather.condition}</p>
+          <p className="text-[15px] mt-1" style={{ color: "var(--text-2)" }}>
+            {weather.temp_range}
+            {weather.action ? ` · ${weather.action}` : ""}
+          </p>
+        </div>
+      </section>
+    </Rise>
   );
 }

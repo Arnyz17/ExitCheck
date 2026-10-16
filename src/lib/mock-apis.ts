@@ -50,6 +50,22 @@ export async function fetchGoogleCalendar(userId: string) {
   }
 }
 
+// Geocoding is the slowest step and addresses rarely change, so results are cached in memory.
+const geocodeCache = new Map<string, { lat: number; lon: number } | null>();
+
+async function geocode(address: string) {
+  const key = sanitizeAddress(address).toLowerCase();
+  if (geocodeCache.has(key)) return geocodeCache.get(key)!;
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(sanitizeAddress(address))}&format=json&limit=1`,
+    { headers: { "User-Agent": "ExitCheck-App/1.0" } }
+  );
+  const data = await res.json();
+  const hit = Array.isArray(data) && data.length ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) } : null;
+  geocodeCache.set(key, hit);
+  return hit;
+}
+
 // Sanitize address strings before geocoding — strip zip codes, country suffixes, and extra dashes
 function sanitizeAddress(addr: string): string {
   return addr
@@ -68,12 +84,10 @@ export async function fetchCommuteEngine(lat?: number, lon?: number, homeAddress
     // Fallback: If no GPS provided, assume they are at Home
     if (!originLat || !originLon) {
       if (!homeAddress) throw new Error("No GPS and no Home Address set");
-      const originGeocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(sanitizeAddress(homeAddress))}&format=json&limit=1`;
-      const originRes = await fetch(originGeocodeUrl, { headers: { "User-Agent": "ExitCheck-App/1.0" } });
-      const originData = await originRes.json();
-      if (!originData || originData.length === 0) throw new Error("Could not geocode origin fallback");
-      originLat = parseFloat(originData[0].lat);
-      originLon = parseFloat(originData[0].lon);
+      const origin = await geocode(homeAddress);
+      if (!origin) throw new Error("Could not geocode origin fallback");
+      originLat = origin.lat;
+      originLon = origin.lon;
       originString = homeAddress;
     }
 
@@ -85,13 +99,10 @@ export async function fetchCommuteEngine(lat?: number, lon?: number, homeAddress
 
     const fetchRoute = async (dest: {label: string, address: string}) => {
       try {
-        const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(sanitizeAddress(dest.address))}&format=json&limit=1`;
-        const geocodeRes = await fetch(geocodeUrl, { headers: { "User-Agent": "ExitCheck-App/1.0" } });
-        const geocodeData = await geocodeRes.json();
-        
-        if (!geocodeData || geocodeData.length === 0) throw new Error(`Could not find coordinates for ${dest.label}`);
-        const destLat = parseFloat(geocodeData[0].lat);
-        const destLon = parseFloat(geocodeData[0].lon);
+        const found = await geocode(dest.address);
+        if (!found) throw new Error(`Could not find coordinates for ${dest.label}`);
+        const destLat = found.lat;
+        const destLon = found.lon;
 
         const osrmUrl = `http://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${destLon},${destLat}?overview=false`;
         const osrmRes = await fetch(osrmUrl);
@@ -180,12 +191,10 @@ export async function fetchWeather(userId: string, lat?: number, lon?: number) {
     if (!weatherLat || !weatherLon) {
       const user = await prisma.user.findUnique({ where: { id: userId } });
       const address = user?.homeAddress || 'Jersey City, NJ';
-      const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(sanitizeAddress(address))}&format=json&limit=1`;
-      const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'ExitCheck-App/1.0' } });
-      const geoData = await geoRes.json();
-      if (geoData && geoData.length > 0) {
-        weatherLat = parseFloat(geoData[0].lat);
-        weatherLon = parseFloat(geoData[0].lon);
+      const geo = await geocode(address);
+      if (geo) {
+        weatherLat = geo.lat;
+        weatherLon = geo.lon;
       } else {
         // Default to Jersey City coords
         weatherLat = 40.7282;

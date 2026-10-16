@@ -1,166 +1,74 @@
-# ExitCheck 🚪
+# ExitCheck
 
-A smart home departure dashboard that gives you a full pre-exit briefing — traffic, weather, calendar, and transit — in under 10 seconds. Tap an NFC tag by your door and the HUD pulls it all together automatically.
+Touch your phone to an NFC sticker by the door and get a one-glance "ready to leave?" screen: weather, commute, home status, what to bring, and anything you're about to forget.
 
-📹 [Watch the demo](./exitcheck_walkthrough.mp4) · 📄 [Full project manual](./exitcheck_manual.pdf)
+No account needed to try it. Open the app and it works.
 
----
-
-## What This Actually Does
-
-ExitCheck solves a real problem: leaving the house unprepared. Forgot your laptop? Left the garage open? Running late to a meeting you forgot about? ExitCheck shows all of this in one glance before you walk out the door.
-
-The app was built from scratch — including a real geocoding and routing engine, a resilient AI orchestration layer with a graceful quota fallback, an OAuth-backed settings hub, and a hardware NFC trigger that costs under $1.
-
----
-
-## How It Works
-
-1. A passive NFC tag (NTAG213/215) is placed by your front door and encoded with a URL trigger.
-2. Tapping your phone against the tag opens the ExitCheck dashboard in your browser.
-3. The app resolves your GPS location, checks live driving times and weather, pulls your next calendar event, checks your gear checklist, and synthesizes everything into a single glanceable HUD — ready before you've finished tying your shoes.
-
----
-
-## What the HUD Shows
-
-| Section | Data | Source |
-|---|---|---|
-| **Critical Alerts** | Appliances left on, open windows, rain incoming | Smart home state + weather |
-| **Quick Actions** | Close garage, start Tesla climate — one tap | `/api/actions` webhook dispatcher |
-| **Commute Times** | Driving + transit + walking for Home & Work | Nominatim geocoding → OSRM routing |
-| **Weather** | Live temp, forecast, wind, rain % | Open-Meteo (no API key needed) |
-| **Calendar** | Next event name, time, location | Google Calendar API (OAuth 2.0) |
-| **Gear Checklist** | Laptop, badge, keys — tappable list | Prisma + SQLite |
-| **Home Security** | Door/window lock states | Smart home sensor states |
-| **On The Way** | Stores on your route with items needed | Shopping list integration |
-
----
-
-## Tech Stack
-
-| Component | Provider | Purpose |
-|---|---|---|
-| Framework | Next.js 16 | Core app + API routes + dashboard UI |
-| Database | Prisma + SQLite | User profiles, gear items, OAuth session tokens |
-| Auth | NextAuth + Google OAuth 2.0 | Session management, Google Calendar token storage |
-| Geocoding | Nominatim (OpenStreetMap) | Resolves text addresses to GPS coords — no API key needed |
-| Routing | OSRM (Open Source Routing Machine) | Live driving distance and time calculations |
-| Weather | Open-Meteo | Real-time WMO-coded weather — no API key needed |
-| Calendar | Google Calendar API | Reads next active calendar event for the session user |
-| AI Synthesis | Google Gemini 1.5 Flash | Orchestrates all data into a structured `generateObject` JSON response |
-| Video | FFmpeg + Pillow | Compiled the MP4 demo walkthrough from rendered frames |
-
----
-
-## Getting Started
+## Run it
 
 ```bash
 npm install
 npx prisma db push
-npm run dev
+npm run dev          # http://localhost:3000
+npm test             # 16 unit tests
 ```
 
-Open `http://localhost:3000/exit` in your browser (Safari or Chrome with location permissions enabled).
+Optional environment variables (`.env.local`):
 
-### Set Up Your NFC Tag
+| Variable | Purpose |
+| --- | --- |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Lets Gemini write the summary. Without it a deterministic rule engine does. |
+| `GEMINI_MODEL` | Override the model (default `gemini-3.8-flash`). |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Google sign-in for Calendar. |
 
-1. Download **NFC Tools** on Android or iOS.
-2. Write a URL record to your tag:
-   ```
-   http://localhost:3000/exit?tag_id=door_main&user_id=usr_123
-   ```
-3. Stick the tag next to your front door handle.
+## What it does
 
-### Configure Your Addresses
+- **Today**: readiness score (0-100), alerts, quick actions, weather, home status, commute, errands, packing checklist.
+- **Stickers**: create and name NFC stickers, give each its own extra checklist, copy the link, write it to a sticker (Web NFC on Android), see scan counts.
+- **Services**: Google Calendar (OAuth), Weather (Open-Meteo), and your own quick actions via webhook (Home Assistant, IFTTT, Zapier), Apple Shortcut, or app link.
+- **Insights**: checks run, problems caught, estimated time saved, clean-exit streak, p50/p95 latency, per-source reliability, and a waterfall trace of the latest request.
+- **You**: name, accent color, home and work addresses, things to bring.
 
-Go to `http://localhost:3000/settings`, enter your Home and Work addresses. These are geocoded automatically via Nominatim and stored in your local SQLite database.
-
----
-
-## Environment Variables
-
-Create a `.env.local` file (never committed — already in `.gitignore`):
-
-```env
-GOOGLE_CLIENT_ID=your_google_oauth_client_id
-GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your_random_secret
-GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
-```
-
-Weather and routing work with **zero API keys** (Open-Meteo + Nominatim + OSRM are all free and keyless).
-
----
-
-## API Reference
-
-**`POST /api/exit`** — HUD Aggregator. Fires 5 concurrent data fetches and feeds results to Gemini for synthesis.
-```json
-{
-  "tag_id": "door_main",
-  "user_id": "usr_123",
-  "latitude": 40.7321,
-  "longitude": -74.0606,
-  "batteryLevel": 0.85,
-  "isCharging": false
-}
-```
-
-**`POST /api/actions`** — Smart home action dispatcher. Returns a success confirmation after dispatching the IoT webhook.
-```json
-{ "actionId": "garage_door_close" }
-```
-
-**`GET /api/settings`** — Returns the session user's saved profile (addresses + gear).
-
-**`PUT /api/settings`** — Updates home or work address for the session user.
-
-**`POST /api/settings/gear`** — Adds a new gear item to the checklist.
-
-**`DELETE /api/settings/gear?id=...`** — Removes a gear item by ID.
-
----
-
-## Architecture
-
-The `/api/exit` route is the core orchestrator:
+## How it works
 
 ```
-NFC Tap → Browser GPS → POST /api/exit
-  └── Promise.allSettled([
-        fetchGoogleCalendar()     → Google Calendar API
-        fetchCommuteEngine()      → Nominatim → OSRM
-        fetchSmartHomeState()     → Sensor states
-        fetchShoppingList()       → Errand list
-        fetchWeather()            → Open-Meteo
-      ])
-  └── Gemini 1.5 Flash (generateObject) → Structured JSON HUD
-  └── Fallback template (if quota exceeded) → Live routing still injected
+NFC tap -> /exit?tag_id=...  ->  POST /api/exit
+                                   |
+            +----------------------+----------------------+
+            |  parallel, individually timed and isolated  |
+            |  Calendar | Commute | Weather | Home | Errands
+            +----------------------+----------------------+
+                                   |
+                  rule engine builds the response (always)
+                                   |
+              Gemini rewrites it (2.5 s budget, circuit breaker)
+                                   |
+        exact facts re-injected (commute, weather, home, actions)
+                                   |
+                       scan + trace written to SQLite
 ```
 
----
+Design decisions worth knowing:
 
-## Notes & Known Limits
+- **Graceful degradation.** Every source can fail independently; the rule engine always produces a valid response, and Gemini only improves wording.
+- **The model never owns facts.** Commute times, weather, home state and actions are overwritten after generation, so it can't hallucinate them.
+- **Circuit breaker.** Two consecutive AI failures skip the model for five minutes so taps stay fast.
+- **Observability built in.** Each scan stores per-source latency, success, AI usage and readiness, which powers the Insights page.
+- **Validated contract.** The response is a Zod schema shared by the rule engine and the model.
 
-- **Gemini free tier**: Caps at 20 requests/day. ExitCheck falls back to a cached static layout when the quota is hit — live routing and weather data continue to work normally since they don't use Gemini.
-- **Geolocation**: Safari requires explicit permission for `localhost`. If denied, the app falls back to geocoding your saved Home address instead.
-- **Smart home actions**: Currently dispatches webhooks to `/api/actions` with a simulated success response. Connecting to real devices (Tesla API, Home Assistant, Shelly) requires adding credentials to `.env.local`.
-- **Google Calendar**: Requires completing the OAuth flow in `/settings` to store a valid access token in the database.
+## Honest limits
 
----
+- iPhone NFC works within an inch or two and a web app can't detect you walking past on its own, so the interaction is a tap. An iOS Shortcuts NFC automation (guided in-app) removes the banner tap.
+- Home sensor data is simulated until a real hub is linked. Quick actions are real (webhook / Shortcut / link).
+- "Minutes saved" is an estimate (10 minutes per caught problem), labelled as such in the UI.
 
-## Project Files
+## Stack
 
-| File | Purpose |
-|---|---|
-| `exitcheck_walkthrough.mp4` | Real compiled MP4 demo video (FFmpeg + Pillow) |
-| `exitcheck_manual.pdf` | Full project manual (compiled via headless Chrome) |
-| `video_presentation.html` | Interactive split-screen feature walkthrough player |
-| `assets/` | Mockup screenshots used in the video presentation |
-| `prisma/schema.prisma` | Database schema (User, Account, Session, GearItem) |
-| `src/app/api/exit/` | Core HUD orchestration route |
-| `src/app/api/actions/` | IoT action dispatcher |
-| `src/app/settings/` | Settings hub UI |
-| `src/lib/mock-apis.ts` | Geocoding, routing, weather, and calendar integrations |
+Next.js 16, React 19, TypeScript, Tailwind v4, Framer Motion, Prisma + SQLite, NextAuth (Google), Vercel AI SDK + Gemini, Zod, Vitest.
+
+## Resume bullets
+
+- Built an NFC-triggered "leave-the-house" dashboard (Next.js, TypeScript, Prisma/SQLite) that fans out to five data sources in parallel, with per-source fault isolation, geocode caching and a rule-based fallback so every tap returns a valid screen.
+- Added an LLM summarization layer (Gemini via Vercel AI SDK, Zod-validated output) with a timeout and circuit breaker, and re-injected authoritative data after generation to prevent hallucinated commute and weather facts.
+- Instrumented every request with latency/success tracing and built an Insights dashboard (p50/p95, source reliability, request waterfall); wrote 16 unit tests covering the rule engine, scoring and analytics.
+- Designed a personalized, animated Apple-style UI with per-sticker checklists, webhook/Shortcut/deep-link actions, and Google OAuth Calendar integration.

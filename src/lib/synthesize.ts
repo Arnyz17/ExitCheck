@@ -16,7 +16,9 @@ export interface SynthesisInput {
   batteryLevel: number | null;
   isCharging: boolean | null;
   gear: string[];
-  connected: Set<string>;
+  actions: Action[];
+  weatherEnabled: boolean;
+  homeEnabled: boolean;
   calendar: { next_event?: string; event_time?: string; error?: string } | null;
   routes: CommuteRoute[];
   smartHome: {
@@ -50,26 +52,26 @@ export function commuteDestinations(routes: CommuteRoute[]) {
     }));
 }
 
-export function quickActions(connected: Set<string>): Action[] {
-  const actions: Action[] = [];
-  if (connected.has("tesla_api")) {
-    actions.push({ id: "tesla_climate_start", label: "Start car climate", icon: "car", endpoint: "/api/actions" });
-  }
-  if (connected.has("home_assistant")) {
-    actions.push({ id: "garage_door_close", label: "Close garage", icon: "door-open", endpoint: "/api/actions" });
-  }
-  return actions;
+const PENALTY: Record<Alert["severity"], number> = { CRITICAL: 35, HIGH: 20, MEDIUM: 10, LOW: 5 };
+
+/** 0-100 "ready to leave" score. Every open problem costs points; a clean exit is 100. */
+export function readiness(alerts: Pick<Alert, "severity">[]) {
+  const base = 100 - alerts.reduce((n, a) => n + PENALTY[a.severity], 0);
+  const score = Math.max(0, Math.min(100, base));
+  const label = score >= 90 ? "Ready to go" : score >= 70 ? "Almost there" : score >= 40 ? "Needs attention" : "Hold on";
+  return { score, label };
 }
 
 /** Deterministic HUD built straight from the live data. Used when no AI key is set or the model call fails. */
 export function synthesize(input: SynthesisInput): ExitCheckResponse {
   const alerts: Alert[] = [];
   const gear = [...input.gear];
-  const rainy = (input.weather?.precipitation_chance ?? 0) >= 40;
+  const rainy = input.weatherEnabled && (input.weather?.precipitation_chance ?? 0) >= 40;
 
-  const unlocked = input.smartHome?.sensors.filter((s) => s.id.startsWith("door") && s.status !== "LOCKED") ?? [];
-  const openWindows = input.smartHome?.sensors.filter((s) => s.id.startsWith("window") && s.status === "OPEN") ?? [];
-  const hot = input.smartHome?.appliances.filter((a) => a.status === "ACTIVE") ?? [];
+  const home = input.homeEnabled ? input.smartHome : null;
+  const unlocked = home?.sensors.filter((s) => s.id.startsWith("door") && s.status !== "LOCKED") ?? [];
+  const openWindows = home?.sensors.filter((s) => s.id.startsWith("window") && s.status === "OPEN") ?? [];
+  const hot = home?.appliances.filter((a) => a.status === "ACTIVE") ?? [];
 
   hot.forEach((a, i) =>
     alerts.push({
@@ -118,12 +120,13 @@ export function synthesize(input: SynthesisInput): ExitCheckResponse {
     recommendation = `${route.label} is about ${Math.min(route.driving.time, route.transit.time)} min away — ${fastest}.`;
   }
 
-  const w = input.weather;
+  const w = input.weatherEnabled ? input.weather : null;
   const weather = w
     ? {
-        temp_range: `${w.low}° – ${w.high}°F`,
-        condition: `${w.forecast}, ${w.current_temp}°F now`,
-        action: rainy ? `${w.precipitation_chance}% chance of rain — take an umbrella` : "",
+        current_temp: w.current_temp,
+        temp_range: `${w.low}° / ${w.high}°`,
+        condition: w.forecast,
+        action: rainy ? `${w.precipitation_chance}% chance of rain. Take an umbrella.` : "No rain expected.",
       }
     : { temp_range: "", condition: "", action: "" };
 
@@ -131,17 +134,22 @@ export function synthesize(input: SynthesisInput): ExitCheckResponse {
   return {
     status: "success",
     timestamp: new Date().toISOString(),
+    readiness: readiness(alerts),
+    user_name: null,
+    tag: null,
     display_theme: alerts.some((a) => a.severity === "CRITICAL") ? "critical" : clear ? "success" : "alert_warning",
     sections: {
       critical_alerts: alerts,
-      quick_actions: quickActions(input.connected),
+      quick_actions: input.actions,
       calendar_commute: {
         next_event: hasEvent ? input.calendar!.next_event! : null,
         event_time: hasEvent ? input.calendar!.event_time || "N/A" : "N/A",
         destinations: commuteDestinations(input.routes),
         recommendation,
       },
-      smart_home_check: input.smartHome
+      smart_home_check: !input.homeEnabled
+        ? { doors_and_locks: "", windows: "", appliances_cleared: true }
+        : home
         ? {
             doors_and_locks: unlocked.length ? "Unlocked" : "All locked",
             windows: openWindows.length ? "A window is open" : hot.length ? `${hot[0].name} is on` : "Windows closed, appliances off",

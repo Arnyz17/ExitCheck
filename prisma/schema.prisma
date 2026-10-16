@@ -20,6 +20,53 @@ model User {
   sessions      Session[]
   gearItems     GearItem[]
   integrations  Integration[]
+  nfcTags       NfcTag[]
+  actions       QuickAction[]
+  scanLogs      ScanLog[]
+}
+
+model ScanLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  userId     String
+  tagName    String   @default("")
+  totalMs    Int
+  aiUsed     Boolean  @default(false)
+  aiMs       Int      @default(0)
+  aiError    String   @default("")
+  sources    String   // JSON: [{ name, ms, ok, error? }]
+  alertCount Int      @default(0)
+  gearCount  Int      @default(0)
+  readiness  Int      @default(100)
+  alertKinds String   @default("") // comma-separated alert ids
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model NfcTag {
+  id            String    @id @default(cuid())
+  tagId         String    @unique
+  name          String
+  location      String    @default("")
+  icon          String    @default("door-open")
+  items         String    @default("")
+  scanCount     Int       @default(0)
+  lastScannedAt DateTime?
+  createdAt     DateTime  @default(now())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuickAction {
+  id        String   @id @default(cuid())
+  label     String
+  kind      String   // 'webhook' | 'shortcut' | 'link'
+  target    String   // webhook URL, Shortcut name, or link URL
+  icon      String   @default("power")
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model GearItem {

@@ -1,304 +1,241 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { signIn, signOut, useSession } from "next-auth/react";
-import { ChevronLeft, Plus, Minus, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus, X, Loader2, Check } from "lucide-react";
+import Rise from "@/components/Rise";
+import { useToast } from "@/components/Toast";
 
 type GearItem = { id: string; name: string };
-type Integration = { id: string; provider: string; status: string };
-type UserProfile = {
-  id: string;
+type Profile = {
+  name: string | null;
   homeAddress: string | null;
   workAddress: string | null;
   gearItems: GearItem[];
-  integrations: Integration[];
 };
 
-const SERVICES: { provider: string; name: string; detail: string }[] = [
-  { provider: "google_calendar", name: "Google Calendar", detail: "Shows your next event" },
-  { provider: "home_assistant", name: "Home Assistant", detail: "Door, window and appliance status" },
-  { provider: "weather_api", name: "Weather", detail: "Forecast for your route" },
-  { provider: "tesla_api", name: "Tesla", detail: "Pre-condition your car" },
+const ACCENTS = [
+  { name: "Blue", value: "#0071e3" },
+  { name: "Green", value: "#1d9b3f" },
+  { name: "Orange", value: "#e07b00" },
+  { name: "Pink", value: "#e0245e" },
+  { name: "Purple", value: "#8944ab" },
+  { name: "Graphite", value: "#636366" },
 ];
 
-function Group({ title, footer, children }: { title: string; footer?: string; children: React.ReactNode }) {
+function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="mb-7">
-      <h2 className="eyebrow px-4 mb-2">{title}</h2>
-      <div className="card overflow-hidden">{children}</div>
-      {footer && (
-        <p className="text-[13px] px-4 mt-2" style={{ color: "var(--text-2)" }}>
-          {footer}
-        </p>
-      )}
-    </section>
+    <Rise>
+      <section className="mb-12">
+        <h2 className="headline">{title}</h2>
+        {subtitle && (
+          <p className="text-[17px] mt-1.5 mb-5" style={{ color: "var(--text-2)" }}>
+            {subtitle}
+          </p>
+        )}
+        <div className={subtitle ? "" : "mt-5"}>{children}</div>
+      </section>
+    </Rise>
   );
 }
 
-function Row({ first, children }: { first?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 px-4 min-h-[52px]" style={first ? undefined : { borderTop: "1px solid var(--line)" }}>
-      {children}
-    </div>
-  );
-}
-
-function Toggle({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onChange}
-      className="relative w-[51px] h-[31px] rounded-full shrink-0 transition-colors"
-      style={{ background: on ? "var(--green)" : "var(--surface-2)", border: on ? "none" : "1px solid var(--line)" }}
-    >
-      <span
-        className="absolute top-[2px] w-[27px] h-[27px] rounded-full bg-white shadow transition-all"
-        style={{ left: on ? 22 : 2 }}
-      />
-    </button>
-  );
-}
-
-export default function SettingsPage() {
-  const { data: session } = useSession();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loadError, setLoadError] = useState(false);
+export default function YouPage() {
+  const toast = useToast();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [name, setName] = useState("");
   const [home, setHome] = useState("");
   const [work, setWork] = useState("");
-  const [newGear, setNewGear] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const say = (msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2200);
-  };
+  const [gear, setGear] = useState("");
+  const [accent, setAccent] = useState<string | null>(null);
 
   useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAccent(localStorage.getItem("exitcheck.accent"));
+    } catch {}
     fetch("/api/settings")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: UserProfile) => {
-        setProfile(data);
-        setHome(data.homeAddress ?? "");
-        setWork(data.workAddress ?? "");
+      .then((p: Profile) => {
+        setProfile(p);
+        setName(p.name && p.name !== "ExitCheck User" ? p.name : "");
+        setHome(p.homeAddress ?? "");
+        setWork(p.workAddress ?? "");
       })
-      .catch(() => setLoadError(true));
+      .catch(() => setFailed(true));
   }, []);
 
-  if (loadError) {
+  if (failed)
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center">
-        <div>
-          <h1 className="text-[22px] font-semibold">Couldn&apos;t load settings</h1>
-          <button className="btn mt-5" onClick={() => window.location.reload()}>
-            Try again
-          </button>
-        </div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center p-6">
+        <h1 className="text-[24px] font-semibold">Couldn&apos;t load your profile</h1>
+        <button className="pill" onClick={() => window.location.reload()}>
+          Try again
+        </button>
       </div>
     );
-  }
 
-  if (!profile) {
+  if (!profile)
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--text-3)" }} />
       </div>
     );
-  }
 
-  const saveAddress = async (field: "homeAddress" | "workAddress", value: string) => {
-    const trimmed = value.trim();
-    if ((profile[field] ?? "") === trimmed) return;
+  const save = async (field: "name" | "homeAddress" | "workAddress", value: string) => {
+    const v = value.trim();
+    const current = field === "name" ? (profile.name && profile.name !== "ExitCheck User" ? profile.name : "") : profile[field] ?? "";
+    if (current === v) return;
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: trimmed }),
+        body: JSON.stringify({ [field]: v }),
       });
       if (!res.ok) throw new Error();
-      setProfile({ ...profile, [field]: trimmed });
-      say("Saved");
+      setProfile({ ...profile, [field]: v });
+      toast("Saved");
     } catch {
-      say("Couldn't save. Check your connection.");
+      toast("Couldn't save. Check your connection.");
     }
+  };
+
+  const pick = (value: string) => {
+    setAccent(value);
+    document.documentElement.style.setProperty("--blue", value);
+    try {
+      localStorage.setItem("exitcheck.accent", value);
+    } catch {}
   };
 
   const addGear = async (e: React.FormEvent) => {
     e.preventDefault();
-    const name = newGear.trim();
-    if (!name || busy) return;
-    setBusy(true);
+    const n = gear.trim();
+    if (!n) return;
     try {
       const res = await fetch("/api/settings/gear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: n }),
       });
       if (!res.ok) throw new Error();
-      const added: GearItem = await res.json();
-      setProfile({ ...profile, gearItems: [...profile.gearItems, added] });
-      setNewGear("");
+      const item: GearItem = await res.json();
+      setProfile({ ...profile, gearItems: [...profile.gearItems, item] });
+      setGear("");
     } catch {
-      say("Couldn't add item.");
-    } finally {
-      setBusy(false);
+      toast("Couldn't add that.");
     }
   };
 
   const removeGear = async (id: string) => {
-    const previous = profile.gearItems;
-    setProfile({ ...profile, gearItems: previous.filter((g) => g.id !== id) });
+    const prev = profile.gearItems;
+    setProfile({ ...profile, gearItems: prev.filter((g) => g.id !== id) });
     try {
       const res = await fetch(`/api/settings/gear?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
     } catch {
-      setProfile((p) => (p ? { ...p, gearItems: previous } : p));
-      say("Couldn't remove item.");
+      setProfile((p) => (p ? { ...p, gearItems: prev } : p));
+      toast("Couldn't remove that.");
     }
   };
 
-  const statusOf = (provider: string) => {
-    if (provider === "google_calendar") return !!session;
-    return profile.integrations.find((i) => i.provider === provider)?.status === "connected";
-  };
-
-  const toggleService = async (provider: string) => {
-    if (provider === "google_calendar") {
-      if (session) signOut({ callbackUrl: "/settings" });
-      else signIn("google", { callbackUrl: "/settings" });
-      return;
-    }
-    const next = statusOf(provider) ? "disconnected" : "connected";
-    const prevList = profile.integrations;
-    const exists = prevList.some((i) => i.provider === provider);
-    setProfile({
-      ...profile,
-      integrations: exists
-        ? prevList.map((i) => (i.provider === provider ? { ...i, status: next } : i))
-        : [...prevList, { id: provider, provider, status: next }],
-    });
-    try {
-      const res = await fetch("/api/settings/integrations", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, status: next }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      setProfile((p) => (p ? { ...p, integrations: prevList } : p));
-      say("Couldn't update. Try again.");
-    }
-  };
+  const commit = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && e.currentTarget.blur();
 
   return (
-    <div className="w-full max-w-[560px] mx-auto px-4 pb-16" style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}>
-      <nav className="pt-3 pb-1">
-        <Link href="/exit" className="inline-flex items-center -ml-1.5 text-[17px]" style={{ color: "var(--blue)" }}>
-          <ChevronLeft className="w-6 h-6" />
-          Back
-        </Link>
-      </nav>
-      <h1 className="text-[34px] font-bold tracking-tight mb-6 mt-1">Settings</h1>
+    <div className="w-full max-w-[720px] mx-auto px-4 sm:px-6 pb-24">
+      <section className="text-center pt-12 sm:pt-20 pb-12">
+        <p className="eyebrow">You</p>
+        <h1 className="display gradient-text mt-3">Make it yours.</h1>
+      </section>
 
-      <Group title="Places" footer="Used to calculate drive, transit and walking times when you leave.">
-        <Row first>
-          <label htmlFor="home" className="w-16 text-[16px] shrink-0">
-            Home
-          </label>
-          <input
-            id="home"
-            value={home}
-            onChange={(e) => setHome(e.target.value)}
-            onBlur={() => saveAddress("homeAddress", home)}
-            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-            placeholder="Add address"
-            autoComplete="street-address"
-            className="flex-1 min-w-0 h-[52px] bg-transparent text-[16px] text-right focus:outline-none placeholder:text-[var(--text-3)]"
-          />
-        </Row>
-        <Row>
-          <label htmlFor="work" className="w-16 text-[16px] shrink-0">
-            Work
-          </label>
-          <input
-            id="work"
-            value={work}
-            onChange={(e) => setWork(e.target.value)}
-            onBlur={() => saveAddress("workAddress", work)}
-            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-            placeholder="Add address"
-            autoComplete="street-address"
-            className="flex-1 min-w-0 h-[52px] bg-transparent text-[16px] text-right focus:outline-none placeholder:text-[var(--text-3)]"
-          />
-        </Row>
-      </Group>
+      <Section title="Your name" subtitle="Used to greet you each time you leave.">
+        <input
+          className="field"
+          placeholder="What should we call you?"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => save("name", name)}
+          onKeyDown={commit}
+          autoComplete="given-name"
+          maxLength={40}
+        />
+      </Section>
 
-      <Group title="Things to bring" footer="These appear on your checklist every time you leave.">
-        {profile.gearItems.map((g, i) => (
-          <Row key={g.id} first={i === 0}>
-            <button
-              onClick={() => removeGear(g.id)}
-              aria-label={`Remove ${g.name}`}
-              className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-              style={{ background: "var(--red)" }}
-            >
-              <Minus className="w-4 h-4 text-white" strokeWidth={3} />
-            </button>
-            <span className="text-[16px] py-3">{g.name}</span>
-          </Row>
-        ))}
-        <form onSubmit={addGear} className="flex items-center gap-3 px-4 min-h-[52px]" style={profile.gearItems.length ? { borderTop: "1px solid var(--line)" } : undefined}>
-          <button
-            type="submit"
-            disabled={!newGear.trim() || busy}
-            aria-label="Add item"
-            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40"
-            style={{ background: "var(--green)" }}
-          >
-            <Plus className="w-4 h-4 text-white" strokeWidth={3} />
-          </button>
-          <input
-            value={newGear}
-            onChange={(e) => setNewGear(e.target.value)}
-            placeholder="Add item"
-            aria-label="New item"
-            className="flex-1 min-w-0 h-[52px] bg-transparent text-[16px] focus:outline-none placeholder:text-[var(--text-3)]"
-          />
-        </form>
-      </Group>
-
-      <Group title="Connected services">
-        {SERVICES.map((s, i) => {
-          const on = statusOf(s.provider);
-          const isGoogle = s.provider === "google_calendar";
-          return (
-            <Row key={s.provider} first={i === 0}>
-              <div className="flex-1 min-w-0 py-2.5">
-                <p className="text-[16px]">{s.name}</p>
-                <p className="text-[13px] truncate" style={{ color: "var(--text-2)" }}>
-                  {isGoogle && session?.user?.email ? session.user.email : s.detail}
-                </p>
-              </div>
-              <Toggle on={on} onChange={() => toggleService(s.provider)} label={s.name} />
-            </Row>
-          );
-        })}
-      </Group>
-
-      {toast && (
-        <div
-          role="status"
-          className="toast fixed left-1/2 bottom-8 -translate-x-1/2 px-4 py-2.5 rounded-full text-[14px] font-medium shadow-lg"
-          style={{ background: "var(--text)", color: "var(--bg)" }}
-        >
-          {toast}
+      <Section title="Accent color" subtitle="Pick the color that runs through the app.">
+        <div className="flex flex-wrap gap-4">
+          {ACCENTS.map((a) => {
+            const on = (accent ?? ACCENTS[0].value) === a.value;
+            return (
+              <motion.button
+                key={a.value}
+                onClick={() => pick(a.value)}
+                aria-label={a.name}
+                aria-pressed={on}
+                whileTap={{ scale: 0.88 }}
+                whileHover={{ scale: 1.08 }}
+                className="relative w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ background: a.value }}
+              >
+                <AnimatePresence>
+                  {on && (
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 24 }}>
+                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
         </div>
-      )}
+      </Section>
+
+      <Section title="Places" subtitle="We use these to work out how long it takes to get there.">
+        <div className="flex flex-col gap-3">
+          <label className="block">
+            <span className="eyebrow block mb-2 px-1">Home</span>
+            <input className="field" placeholder="Add your home address" value={home} onChange={(e) => setHome(e.target.value)} onBlur={() => save("homeAddress", home)} onKeyDown={commit} autoComplete="street-address" />
+          </label>
+          <label className="block">
+            <span className="eyebrow block mb-2 px-1">Work</span>
+            <input className="field" placeholder="Add your work address" value={work} onChange={(e) => setWork(e.target.value)} onBlur={() => save("workAddress", work)} onKeyDown={commit} autoComplete="street-address" />
+          </label>
+        </div>
+      </Section>
+
+      <Section title="Things to bring" subtitle="These show up on your checklist every time.">
+        <div className="flex flex-wrap gap-2.5 mb-5">
+          <AnimatePresence mode="popLayout">
+            {profile.gearItems.map((g) => (
+              <motion.span
+                key={g.id}
+                layout
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                className="inline-flex items-center gap-1 pl-4 pr-1.5 h-11 rounded-full text-[16px] font-medium"
+                style={{ background: "var(--surface)", boxShadow: "var(--shadow)" }}
+              >
+                {g.name}
+                <button onClick={() => removeGear(g.id)} aria-label={`Remove ${g.name}`} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ color: "var(--text-2)" }}>
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.span>
+            ))}
+          </AnimatePresence>
+          {profile.gearItems.length === 0 && (
+            <p className="text-[15px]" style={{ color: "var(--text-2)" }}>
+              Nothing yet. Add keys, a wallet, a badge…
+            </p>
+          )}
+        </div>
+        <form onSubmit={addGear} className="flex gap-2.5">
+          <input className="field" placeholder="Add an item" value={gear} onChange={(e) => setGear(e.target.value)} aria-label="New item" maxLength={40} />
+          <button type="submit" disabled={!gear.trim()} className="pill !h-[50px]">
+            <Plus className="w-4 h-4" /> Add
+          </button>
+        </form>
+      </Section>
     </div>
   );
 }

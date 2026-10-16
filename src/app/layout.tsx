@@ -29,7 +29,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var a=localStorage.getItem('exitcheck.accent');if(a)document.documentElement.style.setProperty('--blue',a)}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <NextAuthProvider>{children}</NextAuthProvider>
       </body>
