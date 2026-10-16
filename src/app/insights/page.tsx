@@ -90,7 +90,7 @@ export default function InsightsPage() {
               { icon: Activity, label: "Checks run", value: data.summary.scans, suffix: "", color: "var(--blue)" },
               { icon: Flame, label: "Problems caught", value: data.summary.alertsCaught, suffix: "", color: "var(--orange)" },
               { icon: Clock, label: "Minutes saved*", value: data.summary.minutesSaved, suffix: "", color: "var(--green)" },
-              { icon: ShieldCheck, label: "Clean-exit streak", value: data.summary.cleanStreak, suffix: "", color: "var(--purple)" },
+              { icon: ShieldCheck, label: "Clean-exit streak", value: data.summary.cleanStreak, suffix: "", color: "var(--text-2)" },
             ].map((m, i) => (
               <Rise key={m.label} delay={i * 0.05}>
                 <div className="tile p-6">
@@ -121,7 +121,7 @@ export default function InsightsPage() {
                 </div>
                 <span
                   className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-[13px] font-semibold"
-                  style={{ background: data.latest?.aiUsed ? "var(--purple-soft)" : "var(--blue-soft)", color: data.latest?.aiUsed ? "var(--purple)" : "var(--blue)" }}
+                  style={{ background: data.latest?.aiUsed ? "var(--blue-soft)" : "var(--blue-soft)", color: data.latest?.aiUsed ? "var(--text-2)" : "var(--blue)" }}
                 >
                   {data.latest?.aiUsed ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
                   {data.latest?.aiUsed ? "Written by Gemini" : "Rule engine"}
@@ -222,7 +222,7 @@ export default function InsightsPage() {
                   ))}
                 </ul>
                 <div className="hairline pt-4 mt-1 flex items-center gap-2 text-[13px]" style={{ color: "var(--text-2)" }}>
-                  <Zap className="w-4 h-4" style={{ color: "var(--purple)" }} />
+                  <Zap className="w-4 h-4" style={{ color: "var(--text-2)" }} />
                   AI wrote {data.summary.ai.used} · fell back {data.summary.ai.fellBack} · rules only {data.summary.ai.ruleOnly}
                 </div>
               </section>

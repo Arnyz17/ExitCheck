@@ -23,6 +23,19 @@ model User {
   nfcTags       NfcTag[]
   actions       QuickAction[]
   scanLogs      ScanLog[]
+  devices       DeviceConnection[]
+}
+
+model DeviceConnection {
+  id        String   @id @default(cuid())
+  provider  String   // 'home_assistant' | 'govee'
+  config    String   // JSON: { url?, token }
+  label     String   @default("")
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
 }
 
 model ScanLog {

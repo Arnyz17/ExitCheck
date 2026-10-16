@@ -17,6 +17,18 @@ const mins = (s: string) => {
   return m && Number(m[0]) > 0 ? m[0] : "<1";
 };
 
+const mapsUrl = (origin: string, dest: string, mode: "driving" | "transit" | "walking") => {
+  let pref = "google";
+  try {
+    pref = localStorage.getItem("exitcheck.maps") || "google";
+  } catch {}
+  if (pref === "apple") {
+    const flag = { driving: "d", transit: "r", walking: "w" }[mode];
+    return `https://maps.apple.com/?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(dest)}&dirflg=${flag}`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=${mode}`;
+};
+
 export default function CommuteCard({ commute }: { commute: ExitCheckResponse["sections"]["calendar_commute"] }) {
   if (!commute) return null;
   const destinations = (commute.destinations ?? []).filter((d) => d.raw_destination);
@@ -59,7 +71,7 @@ export default function CommuteCard({ commute }: { commute: ExitCheckResponse["s
                 {MODES.map(({ key, label, icon: Icon }) => (
                   <motion.a
                     key={key}
-                    href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(dest.raw_origin || "")}&destination=${encodeURIComponent(dest.raw_destination)}&travelmode=${key}`}
+                    href={mapsUrl(dest.raw_origin || "", dest.raw_destination, key)}
                     target="_blank"
                     rel="noopener noreferrer"
                     whileHover={{ y: -3 }}

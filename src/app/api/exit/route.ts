@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureUser } from "@/lib/user";
 import { isEnabled } from "@/lib/services";
+import { haSnapshot } from "@/lib/devices";
 import { ExitCheckResponseSchema } from "@/lib/schema";
 import {
   fetchGoogleCalendar,
@@ -54,12 +55,12 @@ export async function POST(request: Request) {
     await ensureUser(user_id);
     const user = await prisma.user.findUnique({
       where: { id: user_id },
-      include: { gearItems: true, integrations: true, actions: { orderBy: { createdAt: "asc" } }, nfcTags: true },
+      include: { gearItems: true, integrations: true, actions: { orderBy: { createdAt: "asc" } }, nfcTags: true, devices: true },
     });
 
     const rows = user?.integrations ?? [];
     const weatherEnabled = isEnabled("weather_api", rows);
-    const homeEnabled = isEnabled("home_assistant", rows);
+    const homeEnabled = isEnabled("home_assistant", rows) || (user?.devices ?? []).some((d) => d.provider === "home_assistant");
 
     // The sticker that opened this page: its own checklist is merged with the global one.
     const found = typeof tag_id === "string" ? user?.nfcTags.find((t) => t.tagId === tag_id) : undefined;
@@ -74,7 +75,14 @@ export async function POST(request: Request) {
       });
     }
 
-    const actions = (user?.actions ?? []).map((a) => ({
+    const ha = user?.devices.find((d) => d.provider === "home_assistant");
+    const govee = user?.devices.find((d) => d.provider === "govee");
+    const deviceActions = [
+      ...(ha ? [{ id: "device:home_assistant", label: "Lights off", icon: "lightbulb", endpoint: "/api/actions/run", kind: "webhook" as const }] : []),
+      ...(govee ? [{ id: "device:govee", label: "Govee off", icon: "zap", endpoint: "/api/actions/run", kind: "webhook" as const }] : []),
+    ];
+
+    const actions = [...deviceActions, ...(user?.actions ?? []).map((a) => ({
       id: a.id,
       label: a.label,
       icon: a.icon,
@@ -86,14 +94,18 @@ export async function POST(request: Request) {
           : a.kind === "link"
           ? a.target
           : undefined,
-    }));
+    }))];
 
     // All sources run concurrently; any one can fail without taking the screen down.
     const trace: SourceTrace[] = [];
     const [calendar, commute, smartHome, shopping, weather] = await Promise.all([
       traced("Calendar", trace, () => fetchGoogleCalendar(user_id)),
       traced("Commute", trace, () => fetchCommuteEngine(latitude, longitude, user?.homeAddress, user?.workAddress)),
-      homeEnabled ? traced("Home sensors", trace, () => fetchSmartHomeState()) : Promise.resolve(null),
+      ha
+        ? traced("Home Assistant", trace, () => haSnapshot(JSON.parse(ha.config)))
+        : homeEnabled
+        ? traced("Home sensors (demo)", trace, () => fetchSmartHomeState())
+        : Promise.resolve(null),
       traced("Errands", trace, () => fetchShoppingList()),
       weatherEnabled ? traced("Weather", trace, () => fetchWeather(user_id, latitude, longitude)) : Promise.resolve(null),
     ]);

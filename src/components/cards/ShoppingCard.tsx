@@ -17,7 +17,7 @@ export default function ShoppingCard({ shopping }: { shopping: ExitCheckResponse
         <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="w-full p-7 text-left">
           <div className="flex items-start justify-between">
             <p className="eyebrow">On your way</p>
-            <ShoppingBag className="w-9 h-9" strokeWidth={1.5} style={{ color: "var(--purple)" }} />
+            <ShoppingBag className="w-9 h-9" strokeWidth={1.5} style={{ color: "var(--text-2)" }} />
           </div>
           <p className="text-[24px] font-semibold tracking-tight mt-4">
             {n} {n === 1 ? "thing" : "things"} to pick up

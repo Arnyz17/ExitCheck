@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { Plus, Trash2, Loader2, Calendar, CloudSun, House, Webhook, Command, ExternalLink, Play } from "lucide-react";
+import { Plus, Trash2, Loader2, Calendar, CloudSun, House, Webhook, Command, ExternalLink, Play, Router, Lightbulb, Check } from "lucide-react";
 import Sheet from "@/components/Sheet";
 import Rise from "@/components/Rise";
 import { useToast } from "@/components/Toast";
@@ -62,11 +62,17 @@ export default function ServicesPage() {
   const [placeholder, setPlaceholder] = useState<string>(KINDS[0].placeholder);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
+  const [devices, setDevices] = useState<{ provider: string; label: string; host: string }[]>([]);
+  const [hub, setHub] = useState<null | { provider: "home_assistant" | "govee"; brand?: string }>(null);
+  const [hubForm, setHubForm] = useState({ url: "", token: "" });
+  const [linking, setLinking] = useState(false);
 
   const load = useCallback(async () => {
     const [s, a] = await Promise.all([fetch("/api/settings").then((r) => r.json()), fetch("/api/actions").then((r) => r.json())]);
     setRows(s.integrations ?? []);
     setActions(a.actions ?? []);
+    const d = await fetch("/api/devices").then((r) => r.json()).catch(() => ({ devices: [] }));
+    setDevices(d.devices ?? []);
   }, []);
 
   useEffect(() => {
@@ -76,6 +82,34 @@ export default function ServicesPage() {
       setActions([]);
     });
   }, [load]);
+
+  const link = async () => {
+    if (!hub || linking) return;
+    setLinking(true);
+    try {
+      const res = await fetch("/api/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: hub.provider, url: hubForm.url, token: hubForm.token }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Couldn't connect");
+      await load();
+      setHub(null);
+      setHubForm({ url: "", token: "" });
+      toast(`Connected · ${body.label}`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't connect");
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const unlink = async (provider: string) => {
+    await fetch(`/api/devices?provider=${provider}`, { method: "DELETE" });
+    await load();
+    toast("Disconnected");
+  };
 
   const toggleBuiltin = async (provider: string) => {
     if (!rows) return;
@@ -220,6 +254,79 @@ export default function ServicesPage() {
       </div>
 
       <Rise>
+        <div className="mt-16 mb-4 px-1">
+          <p className="eyebrow">Smart home</p>
+          <h2 className="headline mt-1">Your devices</h2>
+          <p className="text-[16px] mt-1.5" style={{ color: "var(--text-2)" }}>
+            Connect once and ExitCheck checks locks, windows and heaters for you, and can switch lights off from the same screen.
+          </p>
+        </div>
+      </Rise>
+      <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
+        {[
+          {
+            provider: "home_assistant" as const,
+            title: "Home Assistant",
+            icon: Router,
+            body: "One connection for Kasa, Honeywell, Govee, Philips Hue, Nest, Ring, Ecobee and thousands more.",
+            cta: "Connect hub",
+          },
+          {
+            provider: "govee" as const,
+            title: "Govee",
+            icon: Lightbulb,
+            body: "Connect straight to your Govee lights with an API key, no hub needed.",
+            cta: "Connect Govee",
+          },
+        ].map((d, i) => {
+          const conn = devices.find((x) => x.provider === d.provider);
+          return (
+            <Rise key={d.provider} delay={i * 0.06}>
+              <article className="tile p-6 h-full flex flex-col">
+                <div className="flex items-start justify-between">
+                  <d.icon className="w-9 h-9" strokeWidth={1.5} style={{ color: "var(--blue)" }} />
+                  {conn && (
+                    <span className="inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--green)" }}>
+                      <Check className="w-4 h-4" /> Connected
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-[21px] font-semibold tracking-tight mt-5">{d.title}</h3>
+                <p className="text-[14px] mt-1.5" style={{ color: "var(--text-2)" }}>
+                  {conn ? `${conn.label}${conn.host ? ` · ${conn.host}` : ""}` : d.body}
+                </p>
+                <div className="mt-auto pt-5">
+                  {conn ? (
+                    <button onClick={() => unlink(d.provider)} className="pill pill-danger">
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button onClick={() => setHub({ provider: d.provider })} className="pill">
+                      {d.cta}
+                    </button>
+                  )}
+                </div>
+              </article>
+            </Rise>
+          );
+        })}
+      </div>
+      <Rise>
+        <p className="eyebrow mt-8 mb-3 px-1">Works with</p>
+        <div className="flex flex-wrap gap-2">
+          {["Kasa", "Honeywell", "Govee", "Philips Hue", "Google Nest", "Ring", "Ecobee", "SmartThings", "Ikea", "Lutron"].map((b) => (
+            <button
+              key={b}
+              onClick={() => setHub({ provider: b === "Govee" ? "govee" : "home_assistant", brand: b })}
+              className="pill pill-plain !h-10"
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      </Rise>
+
+      <Rise>
         <div className="flex items-end justify-between mt-16 mb-4 px-1">
           <div>
             <p className="eyebrow">Quick actions</p>
@@ -291,6 +398,38 @@ export default function ServicesPage() {
           </AnimatePresence>
         </div>
       )}
+
+      <Sheet open={hub !== null} onClose={() => setHub(null)} title={hub?.provider === "govee" ? "Connect Govee" : "Connect Home Assistant"}>
+        <div className="flex flex-col gap-3">
+          {hub?.brand && hub.provider === "home_assistant" && (
+            <p className="text-[14px] rounded-2xl p-3.5" style={{ background: "var(--blue-soft)" }}>
+              {hub.brand} connects through Home Assistant. Add the {hub.brand} integration there once, and its devices show up here automatically.
+            </p>
+          )}
+          {hub?.provider === "home_assistant" ? (
+            <>
+              <input className="field" placeholder="http://homeassistant.local:8123" value={hubForm.url} onChange={(e) => setHubForm({ ...hubForm, url: e.target.value })} autoCapitalize="none" autoCorrect="off" inputMode="url" />
+              <input className="field" placeholder="Long-lived access token" type="password" value={hubForm.token} onChange={(e) => setHubForm({ ...hubForm, token: e.target.value })} autoCapitalize="none" autoCorrect="off" />
+              <p className="text-[13px] px-1" style={{ color: "var(--text-2)" }}>
+                In Home Assistant: your profile → Security → Long-lived access tokens → Create token.
+              </p>
+            </>
+          ) : (
+            <>
+              <input className="field" placeholder="Govee API key" type="password" value={hubForm.token} onChange={(e) => setHubForm({ ...hubForm, token: e.target.value })} autoCapitalize="none" autoCorrect="off" />
+              <p className="text-[13px] px-1" style={{ color: "var(--text-2)" }}>
+                In the Govee Home app: Profile → Settings → Apply for API Key. It arrives by email.
+              </p>
+            </>
+          )}
+          <button onClick={link} disabled={!hubForm.token.trim() || linking} className="pill mt-3 !h-12">
+            {linking && <Loader2 className="w-4 h-4 animate-spin" />} Connect
+          </button>
+          <p className="text-[12px]" style={{ color: "var(--text-3)" }}>
+            Credentials are stored on this server only and used to check your devices when you tap.
+          </p>
+        </div>
+      </Sheet>
 
       <Sheet open={sheet} onClose={() => setSheet(false)} title="Add a quick action">
         <div className="flex flex-col gap-3">

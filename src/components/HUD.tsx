@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw, Nfc } from "lucide-react";
 import { ExitCheckResponse } from "@/lib/schema";
@@ -65,6 +65,19 @@ function greeting(date: Date) {
 }
 
 export default function HUD({ data, loading, refreshing, onRefresh, userId = "usr_123" }: HUDProps) {
+  const alertCount = data?.sections.critical_alerts?.length ?? 0;
+  const firstAlert = data?.sections.critical_alerts?.[0];
+  const stamp = data?.timestamp;
+
+  // A local ping when a check turns up problems and the user opted in.
+  useEffect(() => {
+    if (!stamp || !firstAlert) return;
+    try {
+      if (localStorage.getItem("exitcheck.notify") !== "1" || Notification.permission !== "granted") return;
+      new Notification(`${alertCount} thing${alertCount > 1 ? "s" : ""} to sort before you go`, { body: `${firstAlert.message}. ${firstAlert.action}.` });
+    } catch {}
+  }, [stamp, alertCount, firstAlert]);
+
   if (loading || !data) return <SkeletonHUD />;
 
   const when = new Date(data.timestamp);

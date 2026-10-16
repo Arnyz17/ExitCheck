@@ -48,11 +48,15 @@ export default function YouPage() {
   const [work, setWork] = useState("");
   const [gear, setGear] = useState("");
   const [accent, setAccent] = useState<string | null>(null);
+  const [maps, setMaps] = useState("google");
+  const [notify, setNotify] = useState(false);
 
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAccent(localStorage.getItem("exitcheck.accent"));
+      setMaps(localStorage.getItem("exitcheck.maps") || "google");
+      setNotify(localStorage.getItem("exitcheck.notify") === "1" && typeof Notification !== "undefined" && Notification.permission === "granted");
     } catch {}
     fetch("/api/settings")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -106,6 +110,31 @@ export default function YouPage() {
     try {
       localStorage.setItem("exitcheck.accent", value);
     } catch {}
+  };
+
+  const pickMaps = (v: string) => {
+    setMaps(v);
+    try {
+      localStorage.setItem("exitcheck.maps", v);
+    } catch {}
+  };
+
+  const toggleNotify = async () => {
+    if (notify) {
+      setNotify(false);
+      try {
+        localStorage.setItem("exitcheck.notify", "0");
+      } catch {}
+      return;
+    }
+    if (typeof Notification === "undefined") return toast("This browser can't show notifications. On iPhone, add ExitCheck to your Home Screen first.");
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return toast("Notifications are blocked in your browser settings.");
+    setNotify(true);
+    try {
+      localStorage.setItem("exitcheck.notify", "1");
+    } catch {}
+    toast("You'll get a ping when something needs attention");
   };
 
   const addGear = async (e: React.FormEvent) => {
@@ -187,6 +216,30 @@ export default function YouPage() {
             );
           })}
         </div>
+      </Section>
+
+      <Section title="Maps" subtitle="Where directions open when you tap a travel time.">
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl" style={{ background: "var(--surface)" }}>
+          {[
+            { id: "google", label: "Google Maps" },
+            { id: "apple", label: "Apple Maps" },
+          ].map((m) => (
+            <button
+              key={m.id}
+              onClick={() => pickMaps(m.id)}
+              className="h-11 rounded-xl text-[15px] font-medium transition-colors"
+              style={{ background: maps === m.id ? "var(--blue)" : "transparent", color: maps === m.id ? "#fff" : "var(--text)" }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Alerts on this phone" subtitle="Get a notification when your check finds something to deal with.">
+        <button onClick={toggleNotify} className={notify ? "pill pill-quiet" : "pill"}>
+          {notify ? "Alerts are on · Turn off" : "Turn on alerts"}
+        </button>
       </Section>
 
       <Section title="Places" subtitle="We use these to work out how long it takes to get there.">
