@@ -136,3 +136,7 @@ button:disabled { cursor: default; }
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
 }
+
+.leaflet-container { font-family: inherit; }
+.leaflet-popup-content-wrapper { border-radius: 14px; }
+.map-tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.8); }

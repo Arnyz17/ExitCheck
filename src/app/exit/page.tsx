@@ -32,7 +32,8 @@ function ExitClient() {
 
     try {
       // @ts-expect-error: getBattery is not in the standard DOM typings
-      const battery = await navigator.getBattery?.();
+      // Some browsers never resolve this, so it must not hold up the screen.
+      const battery = await Promise.race([navigator.getBattery?.(), new Promise<undefined>((r) => setTimeout(() => r(undefined), 1200))]);
       if (battery) {
         batteryLevel = battery.level;
         isCharging = battery.charging;
