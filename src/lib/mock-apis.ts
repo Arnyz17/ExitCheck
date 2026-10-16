@@ -214,7 +214,7 @@ export async function fetchSmartHomeState() {
       { id: "window_balcony", status: "OPEN" },
     ],
     appliances: [
-      { name: "Space Heater", status: "ACTIVE", power_draw: "1500W" },
+      { name: "Space Heater", status: "OFF", power_draw: "0W" },
       { name: "Coffee Maker", status: "STANDBY", power_draw: "2W" },
     ],
   };

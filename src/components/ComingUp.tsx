@@ -164,9 +164,14 @@ export default function ComingUp({ userId }: { userId: string }) {
               {watch.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 rounded-2xl p-3" style={{ background: "var(--surface-2)" }}>
                   <a href={w.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#000" }}>
-                      <Play className="w-5 h-5 text-white" fill="#fff" />
-                    </span>
+                    {w.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={w.avatar} alt={`${w.title} poster`} className="w-[52px] h-[76px] rounded-lg object-cover shrink-0" style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.35)" }} />
+                    ) : (
+                      <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#000" }}>
+                        <Play className="w-5 h-5 text-white" fill="#fff" />
+                      </span>
+                    )}
                     <span className="min-w-0">
                       <span className="block text-[16px] font-medium truncate">{w.title}</span>
                       <span className="block text-[13px] truncate" style={{ color: "var(--text-2)" }}>

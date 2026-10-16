@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { findPoster } from "@/lib/poster";
 import { ensureUser, resolveUserId } from "@/lib/user";
 
 const KINDS = ["reply", "watch"];
 
 /** Small square photos only, stored inline. */
 function cleanAvatar(v: unknown) {
-  return typeof v === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(v) && v.length < 60_000 ? v : "";
+  return typeof v === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(v) && v.length < 60_000 ? v : /^https:\/\/upload\.wikimedia\.org\//.test(String(v)) ? String(v) : "";
 }
 
 export async function GET(request: Request) {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Title required" }, { status: 400 });
   }
   const item = await prisma.reminder.create({
-    data: { userId, kind, title: title.trim().slice(0, 60), note: String(note).trim().slice(0, 120), href: String(href).trim().slice(0, 300), avatar: cleanAvatar(avatar) },
+    data: { userId, kind, title: title.trim().slice(0, 60), note: String(note).trim().slice(0, 120), href: String(href).trim().slice(0, 300), avatar: cleanAvatar(avatar) || (kind === "watch" ? await findPoster(title.trim()) : "") },
   });
   return NextResponse.json(item);
 }
