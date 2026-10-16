@@ -10,6 +10,7 @@ import { dayMessage } from "@/lib/greeting";
 import TurnBack from "./TurnBack";
 import dynamic from "next/dynamic";
 
+import ComingUp from "./ComingUp";
 const MapCard = dynamic(() => import("./MapCard"), { ssr: false });
 import CriticalAlertsCard from "./cards/CriticalAlertsCard";
 import CommuteCard from "./cards/CommuteCard";
@@ -178,6 +179,9 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
           <HomeSecurityCard security={data.sections.smart_home_check} />
           <div className="md:col-span-2 empty:hidden">
             <CommuteCard commute={data.sections.calendar_commute} />
+          </div>
+          <div className="md:col-span-2">
+            <ComingUp userId={userId} />
           </div>
           <div className="md:col-span-2">
             <MapCard userId={userId} />

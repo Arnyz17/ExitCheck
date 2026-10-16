@@ -24,6 +24,19 @@ model User {
   actions       QuickAction[]
   scanLogs      ScanLog[]
   devices       DeviceConnection[]
+  reminders     Reminder[]
+}
+
+model Reminder {
+  id        String   @id @default(cuid())
+  kind      String   // 'reply' | 'watch'
+  title     String   // person to reply to, or what you're watching
+  note      String   @default("")
+  href      String   @default("")
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DeviceConnection {

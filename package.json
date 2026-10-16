@@ -23,6 +23,7 @@
     "next-auth": "^4.24.15",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "simple-icons": "^16.35.0",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
