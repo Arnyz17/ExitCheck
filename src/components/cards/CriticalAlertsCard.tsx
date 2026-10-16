@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import BuildingNotice from "../BuildingNotice";
 import { AlertTriangle, Flame, BatteryWarning, Info, LucideIcon } from "lucide-react";
 
 interface Alert {
@@ -51,6 +52,7 @@ export default function CriticalAlertsCard({ alerts }: { alerts: Alert[] }) {
           </motion.div>
         );
       })}
+      <BuildingNotice />
     </section>
   );
 }

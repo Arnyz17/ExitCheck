@@ -32,11 +32,10 @@ export function dayMessage(now: Date, day: DaySummary | null | undefined): strin
           seed
         );
       }
-      return friday ? "That's a wrap on the week. You earned it." : "Hope you had a great day.";
+      return "Hope you had a great day.";
     }
   }
 
-  if (friday && h >= 16) return "It's Friday. You earned it.";
   if (h < 12) return friday ? "Happy Friday. Make it a good one." : pick(["Make it a good one today.", "Fresh day. Let's go."], seed);
   if (h < 18) return "Hope the day's treating you well.";
   return pick(["Hope you had a great day.", "Hope today was kind to you."], seed);

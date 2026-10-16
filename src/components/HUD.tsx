@@ -187,7 +187,7 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
 
       <main className="flex flex-col gap-4 lg:gap-5">
         {data.tag_count === 0 && <Welcome userId={userId} />}
-        {alerts.length > 0 && <CriticalAlertsCard alerts={alerts} />}
+        <CriticalAlertsCard alerts={alerts} />
         <QuickActionsCard actions={data.sections.quick_actions ?? []} />
 
         {/* Row 1: what's coming up leads on wide screens, weather and home stack beside it. */}

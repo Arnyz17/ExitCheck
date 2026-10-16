@@ -15,7 +15,7 @@ describe("dayMessage", () => {
     expect(dayMessage(at("2026-10-15T10:00:00"), { total: 0, done: 0, hasClass: false })).toMatch(/calendar/i);
   });
   it("works with no calendar linked", () => {
-    expect(dayMessage(at("2026-10-16T19:00:00"), null)).toMatch(/Friday|day|today/i);
+    expect(dayMessage(at("2026-10-16T19:00:00"), null)).toMatch(/day|today/i);
     expect(dayMessage(at("2026-10-14T02:00:00"), null)).toMatch(/midnight/i);
   });
 });
