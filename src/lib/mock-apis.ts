@@ -341,3 +341,26 @@ export async function googleTimes(origin: Waypoint, destination: Waypoint) {
     return null;
   }
 }
+
+const placeCache = new Map<string, string | null>();
+
+/** "New Jersey, USA" style label for an address, via reverse geocoding (cached). */
+export async function placeName(address: string) {
+  const key = address.toLowerCase();
+  if (placeCache.has(key)) return placeCache.get(key)!;
+  let label: string | null = null;
+  try {
+    const hit = await geocode(address);
+    if (hit) {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${hit.lat}&lon=${hit.lon}&zoom=5&format=json&addressdetails=1`, {
+        headers: { "User-Agent": "ExitCheck-App/1.0" },
+        signal: AbortSignal.timeout(4000),
+      });
+      const a = (await res.json()).address ?? {};
+      const country = a.country_code === "us" ? "USA" : a.country;
+      label = [a.state ?? a.region, country].filter(Boolean).join(", ") || null;
+    }
+  } catch {}
+  placeCache.set(key, label);
+  return label;
+}

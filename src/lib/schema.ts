@@ -6,6 +6,7 @@ export const ExitCheckResponseSchema = z.object({
   display_theme: z.enum(['alert_warning', 'normal', 'success', 'critical']),
   day_summary: z.object({ total: z.number(), done: z.number(), hasClass: z.boolean() }).nullable().optional(),
   readiness: z.object({ score: z.number(), label: z.string() }).optional(),
+  place: z.string().nullable().optional(),
   tag_count: z.number().optional(),
   user_name: z.string().nullable().optional(),
   tag: z.object({ name: z.string(), location: z.string() }).nullable().optional(),

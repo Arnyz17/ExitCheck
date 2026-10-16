@@ -14,6 +14,7 @@ import {
   fetchSmartHomeState,
   fetchShoppingList,
   fetchWeather,
+  placeName,
 } from "@/lib/mock-apis";
 import { synthesize, readiness, commuteDestinations, type SynthesisInput, type CommuteRoute } from "@/lib/synthesize";
 
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
     base.user_name = user?.name && user.name !== "ExitCheck User" ? user.name : null;
     base.tag = tag;
     base.tag_count = user?.nfcTags.length ?? 0;
+    base.place = user?.homeAddress ? await placeName(user.homeAddress) : null;
     let final = base;
     let aiUsed = false;
     let aiMs = 0;
@@ -163,6 +165,7 @@ ${JSON.stringify({ tag_id, battery: { batteryLevel, isCharging }, custom_gear_ch
         ai.user_name = base.user_name;
         ai.tag = base.tag;
         ai.tag_count = base.tag_count;
+        ai.place = base.place;
         ai.day_summary = base.day_summary;
         ai.sections.quick_actions = actions;
         ai.sections.calendar_commute.destinations = commuteDestinations(input.routes);

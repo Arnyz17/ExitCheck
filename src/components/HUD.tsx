@@ -8,6 +8,7 @@ import Rise from "./Rise";
 import Welcome from "./Welcome";
 import { dayMessage } from "@/lib/greeting";
 import TurnBack from "./TurnBack";
+import LiveClock from "./LiveClock";
 import dynamic from "next/dynamic";
 
 import ComingUp from "./ComingUp";
@@ -96,6 +97,16 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
         <div>
         <motion.p className="eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           It&apos;s {when.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+        </motion.p>
+
+        <motion.p
+          className="text-[17px] sm:text-[19px] font-medium mt-2"
+          style={{ color: "var(--text-2)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <LiveClock place={data.place} />
         </motion.p>
 
         <motion.h1
