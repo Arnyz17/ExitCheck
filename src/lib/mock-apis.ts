@@ -100,6 +100,27 @@ export async function fetchCommuteEngine(lat?: number, lon?: number, homeAddress
 
     const fetchRoute = async (dest: {label: string, address: string}) => {
       try {
+        // Preferred: Google Maps with live traffic for driving, real transit and walking times.
+        const g = await googleTimes(
+          originLat !== undefined && originLon !== undefined && originString === `${originLat},${originLon}`
+            ? { location: { latLng: { latitude: originLat, longitude: originLon } } }
+            : { address: originString },
+          { address: dest.address }
+        );
+        if (g) {
+          if (g.meters < 250) return null; // already there
+          const miles = (g.meters / 1609.34).toFixed(1);
+          return {
+            label: dest.label,
+            raw_origin: originString,
+            raw_destination: dest.address,
+            source: "google" as const,
+            driving: { time: g.driving, unit: "min", condition: `To ${dest.label} (${miles} mi)` },
+            transit: { time: g.transit, unit: "min", condition: `To ${dest.label} (${miles} mi)` },
+            walking: { time: g.walking, unit: "min", condition: "Clear" },
+          };
+        }
+
         const found = await geocode(dest.address);
         if (!found) throw new Error(`Could not find coordinates for ${dest.label}`);
         const destLat = found.lat;
@@ -117,12 +138,14 @@ export async function fetchCommuteEngine(lat?: number, lon?: number, homeAddress
         const distanceMeters = osrmData.routes[0].distance;
         const distanceMiles = (distanceMeters / 1609.34).toFixed(1);
         const transitMinutes = Math.round(drivingMinutes * 1.6);
-        const walkingMinutes = Math.round(drivingMinutes * 10);
+        if (distanceMeters < 250) return null; // already there
+        const walkingMinutes = Math.round(distanceMeters / 80); // ~4.8 km/h
 
         return {
           label: dest.label,
           raw_origin: originString,
           raw_destination: dest.address,
+          source: "estimate" as const,
           driving: { time: drivingMinutes, unit: "min", condition: `To ${dest.label} (${distanceMiles} mi)` },
           transit: { time: transitMinutes, unit: "min", condition: `To ${dest.label} (${distanceMiles} mi)` },
           walking: { time: walkingMinutes, unit: "min", condition: "Clear" },
@@ -240,10 +263,59 @@ export async function fetchWeather(userId: string, lat?: number, lon?: number) {
 
 /** Driving minutes between two points via OSRM. */
 export async function drivingMinutes(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const ll = (p: { lat: number; lon: number }) => ({ location: { latLng: { latitude: p.lat, longitude: p.lon } } });
+  try {
+    if (process.env.GOOGLE_MAPS_API_KEY?.trim()) {
+      const g = await googleLeg(ll(a), ll(b), "DRIVE");
+      if (g) return g.minutes;
+    }
+  } catch {}
   const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`, {
     signal: AbortSignal.timeout(6000),
   });
   const data = await res.json();
   if (data.code !== "Ok" || !data.routes?.length) throw new Error("Routing is unavailable right now.");
   return Math.round(data.routes[0].duration / 60);
+}
+
+type Waypoint = { address: string } | { location: { latLng: { latitude: number; longitude: number } } };
+
+async function googleLeg(origin: Waypoint, destination: Waypoint, mode: "DRIVE" | "TRANSIT" | "WALK") {
+  const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": process.env.GOOGLE_MAPS_API_KEY as string,
+      "X-Goog-FieldMask": "routes.duration,routes.distanceMeters",
+    },
+    body: JSON.stringify({
+      origin,
+      destination,
+      travelMode: mode,
+      ...(mode === "DRIVE" && { routingPreference: "TRAFFIC_AWARE", departureTime: new Date(Date.now() + 30_000).toISOString() }),
+    }),
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!res.ok) throw new Error(`Google Routes ${res.status}`);
+  const data = await res.json();
+  const r = data.routes?.[0];
+  if (!r) return null;
+  return { minutes: Math.max(1, Math.round(parseInt(r.duration, 10) / 60)), meters: r.distanceMeters as number };
+}
+
+/** Live Google Maps times (drive uses current traffic). Returns null when no key or the call fails. */
+export async function googleTimes(origin: Waypoint, destination: Waypoint) {
+  if (!process.env.GOOGLE_MAPS_API_KEY?.trim()) return null;
+  try {
+    const [d, t, w] = await Promise.all([
+      googleLeg(origin, destination, "DRIVE"),
+      googleLeg(origin, destination, "TRANSIT").catch(() => null),
+      googleLeg(origin, destination, "WALK").catch(() => null),
+    ]);
+    if (!d) return null;
+    return { driving: d.minutes, transit: t?.minutes ?? -1, walking: w?.minutes ?? Math.round(d.meters / 80 / 1), meters: d.meters };
+  } catch (e) {
+    console.warn("Google Routes failed, using estimate:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }

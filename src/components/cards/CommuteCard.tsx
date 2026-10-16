@@ -14,6 +14,7 @@ const MODES: { key: "driving" | "transit" | "walking"; label: string; icon: Luci
 
 const mins = (s: string) => {
   const m = s.match(/\d+/);
+  if (!m) return "—";
   return m && Number(m[0]) > 0 ? m[0] : "<1";
 };
 
@@ -113,6 +114,11 @@ export default function CommuteCard({ commute }: { commute: ExitCheckResponse["s
             </div>
           ))}
         </div>
+        <p className="text-[12px] mt-5" style={{ color: "var(--text-3)" }}>
+          {destinations.some((d) => d.source === "google")
+            ? "Live traffic from Google Maps."
+            : "Typical drive times. Add a Google Maps key for live traffic, real transit and walking."}
+        </p>
       </section>
     </Rise>
   );

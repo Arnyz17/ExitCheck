@@ -33,6 +33,7 @@ export const ExitCheckResponseSchema = z.object({
         z.object({
           label: z.string().describe("Label for the destination, e.g. 'Home' or 'Work'"),
           address: z.string().describe("The physical destination address, or 'N/A' if unknown"),
+          source: z.enum(['google', 'estimate']).optional(),
           raw_origin: z.string().describe("The raw GPS or string origin address used for calculation"),
           raw_destination: z.string().describe("The raw destination string address used for calculation"),
           travel_options: z.object({

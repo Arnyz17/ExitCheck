@@ -9,6 +9,7 @@ export interface CommuteRoute {
   raw_destination: string;
   driving: { time: number; condition: string };
   transit: { time: number; condition: string };
+  source?: "google" | "estimate";
   walking: { time: number };
 }
 
@@ -47,9 +48,10 @@ export function commuteDestinations(routes: CommuteRoute[]) {
       raw_destination: r.raw_destination,
       travel_options: {
         driving: `${r.driving.time} min`,
-        transit: `${r.transit.time} min`,
+        transit: r.transit.time > 0 ? `${r.transit.time} min` : "n/a",
         walking: `${r.walking.time} min`,
       },
+      source: r.source ?? "estimate",
     }));
 }
 
@@ -72,7 +74,7 @@ export function leaveBy(startIso: string | null | undefined, routes: CommuteRout
   if (!route) return null;
   const start = new Date(startIso).getTime();
   if (Number.isNaN(start)) return null;
-  const travel = Math.min(route.driving.time, route.transit.time);
+  const travel = route.transit.time > 0 ? Math.min(route.driving.time, route.transit.time) : route.driving.time;
   return new Date(start - (travel + ARRIVAL_BUFFER_MIN) * 60_000).toISOString();
 }
 
@@ -130,8 +132,10 @@ export function synthesize(input: SynthesisInput): ExitCheckResponse {
   const hasEvent = !!input.calendar?.next_event && !input.calendar.error;
   let recommendation = "";
   if (route) {
-    const fastest = route.driving.time <= route.transit.time ? "drive" : "take transit";
-    recommendation = `${route.label} is about ${Math.min(route.driving.time, route.transit.time)} min away — ${fastest}.`;
+    const transitOk = route.transit.time > 0;
+    const fastest = !transitOk || route.driving.time <= route.transit.time ? "drive" : "take transit";
+    const best = transitOk ? Math.min(route.driving.time, route.transit.time) : route.driving.time;
+    recommendation = `${route.label} is about ${best} min away. ${fastest === "drive" ? "Drive" : "Take transit"}${route.source === "google" ? ", based on current traffic" : ""}.`;
   }
 
   const w = input.weatherEnabled ? input.weather : null;
