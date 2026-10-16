@@ -20,7 +20,7 @@ export interface SynthesisInput {
   actions: Action[];
   weatherEnabled: boolean;
   homeEnabled: boolean;
-  calendar: { next_event?: string; event_time?: string; start_iso?: string | null; error?: string } | null;
+  calendar: { next_event?: string; event_time?: string; start_iso?: string | null; error?: string; day?: { total: number; done: number; hasClass: boolean } | null } | null;
   now?: Date;
   routes: CommuteRoute[];
   smartHome: {
@@ -152,6 +152,7 @@ export function synthesize(input: SynthesisInput): ExitCheckResponse {
   return {
     status: "success",
     timestamp: new Date().toISOString(),
+    day_summary: input.calendar && !input.calendar.error ? input.calendar.day ?? null : null,
     readiness: readiness(alerts),
     user_name: null,
     tag: null,

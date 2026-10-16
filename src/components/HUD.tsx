@@ -6,6 +6,7 @@ import { RefreshCw, Nfc } from "lucide-react";
 import { ExitCheckResponse } from "@/lib/schema";
 import Rise from "./Rise";
 import Welcome from "./Welcome";
+import { dayMessage } from "@/lib/greeting";
 import TurnBack from "./TurnBack";
 import dynamic from "next/dynamic";
 
@@ -91,13 +92,8 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
   return (
     <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 pb-20">
       <section className="text-center pt-12 sm:pt-20 pb-10 sm:pb-14">
-        <motion.p
-          className="eyebrow inline-flex items-center gap-1.5"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {data.tag && <Nfc className="w-3.5 h-3.5" style={{ color: "var(--blue)" }} />}
-          {data.tag ? `${data.tag.name}${data.tag.location ? ` · ${data.tag.location}` : ""}` : when.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+        <motion.p className="eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          It&apos;s {when.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
         </motion.p>
 
         <motion.h1
@@ -109,6 +105,30 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
           {greeting(when)}
           {first ? `, ${first}` : ""}.
         </motion.h1>
+
+        <motion.p
+          className="text-[19px] sm:text-[24px] mt-4 font-medium max-w-[620px] mx-auto"
+          style={{ color: "var(--text-2)" }}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, type: "spring", stiffness: 100, damping: 18 }}
+        >
+          {dayMessage(new Date(), data.day_summary)}
+        </motion.p>
+
+        {data.tag && (
+          <motion.p
+            className="inline-flex items-center gap-1.5 mt-4 px-3.5 h-8 rounded-full text-[13px] font-medium"
+            style={{ background: "var(--surface)", color: "var(--text-2)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+          >
+            <Nfc className="w-3.5 h-3.5" style={{ color: "var(--blue)" }} />
+            {data.tag.name}
+            {data.tag.location ? ` · ${data.tag.location}` : ""}
+          </motion.p>
+        )}
 
         {data.readiness && (
           <motion.div className="mt-8" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 120, damping: 16, delay: 0.15 }}>

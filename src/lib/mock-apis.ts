@@ -24,10 +24,31 @@ export async function fetchGoogleCalendar(userId: string) {
     }
 
     const data = await res.json();
+
+    // Today's events, so the greeting can talk about how the day actually went.
+    let day: { total: number; done: number; hasClass: boolean } | null = null;
+    try {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
+      const dayRes = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${startOfDay.toISOString()}&timeMax=${endOfDay.toISOString()}&maxResults=25&singleEvents=true&orderBy=startTime`,
+        { headers: { Authorization: `Bearer ${account.access_token}` } }
+      );
+      if (dayRes.ok) {
+        const items = ((await dayRes.json()).items ?? []) as { summary?: string; end?: { dateTime?: string } }[];
+        day = {
+          total: items.length,
+          done: items.filter((e) => e.end?.dateTime && new Date(e.end.dateTime).getTime() < Date.now()).length,
+          hasClass: items.some((e) => /\b(class|lecture|lab|seminar|course|section|exam)\b|\b[A-Za-z]{2,4}\s?\d{3}\b/i.test(e.summary ?? "")),
+        };
+      }
+    } catch {}
+
     const nextEvent = data.items && data.items.length > 0 ? data.items[0] : null;
     
     if (!nextEvent) {
-      return { next_event: "No upcoming events today", event_time: "", location: "" };
+      return { next_event: "No upcoming events today", event_time: "", location: "", day };
     }
 
     // Format time nicely
@@ -44,6 +65,7 @@ export async function fetchGoogleCalendar(userId: string) {
       start_iso: nextEvent.start?.dateTime ?? null,
       location: nextEvent.location || "No location specified",
       description: nextEvent.description ? "Has details" : "No details",
+      day,
     };
   } catch (error) {
     console.error(error);

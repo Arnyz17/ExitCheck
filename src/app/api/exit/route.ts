@@ -163,6 +163,7 @@ ${JSON.stringify({ tag_id, battery: { batteryLevel, isCharging }, custom_gear_ch
         ai.user_name = base.user_name;
         ai.tag = base.tag;
         ai.tag_count = base.tag_count;
+        ai.day_summary = base.day_summary;
         ai.sections.quick_actions = actions;
         ai.sections.calendar_commute.destinations = commuteDestinations(input.routes);
         ai.sections.errands_and_shopping = base.sections.errands_and_shopping;
