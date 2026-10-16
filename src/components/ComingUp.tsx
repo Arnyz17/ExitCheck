@@ -8,7 +8,35 @@ import Sheet from "./Sheet";
 import BrandIcon from "./BrandIcon";
 import { useToast } from "./Toast";
 
-type Item = { id: string; kind: "reply" | "watch"; title: string; note: string; href: string };
+type Item = { id: string; kind: "reply" | "watch"; title: string; note: string; href: string; avatar: string };
+
+/** Center-crops a picked photo to a small square JPEG so it's cheap to store. */
+async function toAvatar(file: File): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const side = Math.min(bmp.width, bmp.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  canvas.getContext("2d")!.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 128, 128);
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+function Avatar({ name, src, onPick }: { name: string; src: string; onPick?: (f: File) => void }) {
+  const inner = src ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" className="w-10 h-10 rounded-full object-cover" />
+  ) : (
+    <span className="w-10 h-10 rounded-full flex items-center justify-center font-semibold" style={{ background: "var(--blue-soft)", color: "var(--blue)" }}>
+      {name[0]?.toUpperCase()}
+    </span>
+  );
+  if (!onPick) return inner;
+  return (
+    <label className="cursor-pointer shrink-0" title="Change photo">
+      {inner}
+      <input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && onPick(e.target.files[0])} />
+    </label>
+  );
+}
 
 const APPLIANCES = [
   { name: "Dryer", left: 14, total: 60 },
@@ -20,7 +48,7 @@ export default function ComingUp({ userId }: { userId: string }) {
   const toast = useToast();
   const [items, setItems] = useState<Item[] | null>(null);
   const [adding, setAdding] = useState<null | "reply" | "watch">(null);
-  const [form, setForm] = useState({ title: "", note: "", href: "" });
+  const [form, setForm] = useState({ title: "", note: "", href: "", avatar: "" });
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/inbox?user_id=${encodeURIComponent(userId)}`);
@@ -40,6 +68,16 @@ export default function ComingUp({ userId }: { userId: string }) {
     await fetch("/api/inbox", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch(() => {});
   };
 
+  const changePhoto = async (id: string, file: File) => {
+    try {
+      const avatar = await toAvatar(file);
+      setItems((p) => p?.map((i) => (i.id === id ? { ...i, avatar } : i)) ?? p);
+      await fetch("/api/inbox", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, avatar }) });
+    } catch {
+      toast("Couldn't use that photo.");
+    }
+  };
+
   const save = async () => {
     if (!adding || !form.title.trim()) return;
     const href =
@@ -51,16 +89,16 @@ export default function ComingUp({ userId }: { userId: string }) {
     const res = await fetch("/api/inbox", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: adding, title: form.title, note: form.note, href }),
+      body: JSON.stringify({ kind: adding, title: form.title, note: form.note, href, avatar: form.avatar }),
     });
     if (!res.ok) return toast("Couldn't save that.");
     setAdding(null);
-    setForm({ title: "", note: "", href: "" });
+    setForm({ title: "", note: "", href: "", avatar: "" });
     await load();
   };
 
   const open = (kind: "reply" | "watch") => {
-    setForm({ title: "", note: "", href: "" });
+    setForm({ title: "", note: "", href: "", avatar: "" });
     setAdding(kind);
   };
 
@@ -90,10 +128,8 @@ export default function ComingUp({ userId }: { userId: string }) {
                     exit={{ opacity: 0, height: 0 }}
                     className={`flex items-center gap-3 overflow-hidden ${i > 0 ? "hairline" : ""}`}
                   >
+                    <Avatar name={r.title} src={r.avatar} onPick={(f) => changePhoto(r.id, f)} />
                     <a href={r.href} className="flex items-center gap-3 flex-1 min-w-0 py-3">
-                      <span className="w-10 h-10 rounded-full flex items-center justify-center font-semibold shrink-0" style={{ background: "var(--blue-soft)", color: "var(--blue)" }}>
-                        {r.title[0].toUpperCase()}
-                      </span>
                       <span className="min-w-0">
                         <span className="block text-[16px] font-medium truncate">{r.title}</span>
                         <span className="block text-[13px] truncate" style={{ color: "var(--text-2)" }}>
@@ -188,6 +224,23 @@ export default function ComingUp({ userId }: { userId: string }) {
 
       <Sheet open={adding !== null} onClose={() => setAdding(null)} title={adding === "reply" ? "Remember to reply" : "Save what you're watching"}>
         <div className="flex flex-col gap-3">
+          {adding === "reply" && (
+            <label className="flex items-center gap-4 cursor-pointer">
+              <Avatar name={form.title || "?"} src={form.avatar} />
+              <span className="text-[15px] font-medium" style={{ color: "var(--blue)" }}>
+                {form.avatar ? "Change photo" : "Add photo"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setForm({ ...form, avatar: await toAvatar(f).catch(() => "") });
+                }}
+              />
+            </label>
+          )}
           <input className="field" placeholder={adding === "reply" ? "Who? (e.g. Richie)" : "Title (e.g. Stranger Things)"} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} autoFocus maxLength={60} />
           <input className="field" placeholder={adding === "reply" ? "About what? (optional)" : "Where you stopped (e.g. S2 · E4)"} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} maxLength={120} />
           <input

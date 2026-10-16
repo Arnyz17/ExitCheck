@@ -33,6 +33,7 @@ model Reminder {
   title     String   // person to reply to, or what you're watching
   note      String   @default("")
   href      String   @default("")
+  avatar    String   @default("")
   done      Boolean  @default(false)
   createdAt DateTime @default(now())
   userId    String
