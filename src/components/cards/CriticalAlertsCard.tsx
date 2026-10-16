@@ -20,7 +20,7 @@ const ICONS: Record<string, LucideIcon> = {
 
 export default function CriticalAlertsCard({ alerts }: { alerts: Alert[] }) {
   return (
-    <section className="flex flex-col gap-3" aria-label="Alerts">
+    <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-5" aria-label="Alerts">
       {alerts.map((alert, i) => {
         const color = alert.severity === "CRITICAL" ? "var(--red)" : alert.severity === "LOW" ? "var(--blue)" : "var(--orange)";
         const soft = alert.severity === "CRITICAL" ? "var(--red-soft)" : alert.severity === "LOW" ? "var(--blue-soft)" : "var(--orange-soft)";

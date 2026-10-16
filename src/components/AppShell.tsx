@@ -37,7 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             paddingTop: "env(safe-area-inset-top)",
           }}
         >
-          <nav className="max-w-[1024px] mx-auto h-12 px-4 flex items-center justify-between">
+          <nav className="max-w-[1240px] mx-auto h-12 px-4 lg:px-10 flex items-center justify-between">
             <Link href="/exit" className="text-[15px] font-semibold tracking-tight">
               ExitCheck
             </Link>

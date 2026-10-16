@@ -91,14 +91,15 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
   const first = data.user_name?.split(" ")[0];
 
   return (
-    <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 pb-20">
-      <section className="text-center pt-12 sm:pt-20 pb-10 sm:pb-14">
+    <div className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-10 pb-20">
+      <section className="text-center lg:text-left lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:gap-16 pt-12 sm:pt-16 lg:pt-12 pb-8 lg:pb-8">
+        <div>
         <motion.p className="eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           It&apos;s {when.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
         </motion.p>
 
         <motion.h1
-          className="display gradient-text mt-4"
+          className="display gradient-text mt-4 lg:!text-[80px]"
           initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ type: "spring", stiffness: 90, damping: 18, delay: 0.05 }}
@@ -108,7 +109,7 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
         </motion.h1>
 
         <motion.p
-          className="text-[19px] sm:text-[24px] mt-4 font-medium max-w-[620px] mx-auto"
+          className="text-[19px] sm:text-[24px] mt-4 font-medium max-w-[620px] mx-auto lg:mx-0"
           style={{ color: "var(--text-2)" }}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -131,8 +132,11 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
           </motion.p>
         )}
 
+        </div>
+
+        <div className="lg:flex lg:flex-col lg:items-center">
         {data.readiness && (
-          <motion.div className="mt-8" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 120, damping: 16, delay: 0.15 }}>
+          <motion.div className="mt-8 lg:mt-0" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 120, damping: 16, delay: 0.15 }}>
             <Ring score={data.readiness.score} label={data.readiness.label} />
           </motion.div>
         )}
@@ -167,30 +171,42 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
             {refreshing ? "Updating" : "Refresh"}
           </motion.button>
         </motion.div>
+        </div>
       </section>
 
-      <main className="flex flex-col gap-4 sm:gap-5">
+      <main className="flex flex-col gap-4 lg:gap-5">
         {data.tag_count === 0 && <Welcome userId={userId} />}
         {alerts.length > 0 && <CriticalAlertsCard alerts={alerts} />}
         <QuickActionsCard actions={data.sections.quick_actions ?? []} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          <WeatherCard weather={data.sections.weather_directive} />
-          <HomeSecurityCard security={data.sections.smart_home_check} />
-          <div className="md:col-span-2 empty:hidden">
-            <CommuteCard commute={data.sections.calendar_commute} />
+        {/* Row 1: what's coming up leads on wide screens, weather and home stack beside it. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
+          <div className="lg:col-start-3 lg:row-start-1">
+            <WeatherCard weather={data.sections.weather_directive} />
           </div>
-          <div className="md:col-span-2">
+          <div className="lg:col-start-3 lg:row-start-2">
+            <HomeSecurityCard security={data.sections.smart_home_check} />
+          </div>
+          <div className="lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2">
             <ComingUp userId={userId} />
           </div>
-          <div className="md:col-span-2">
-            <MapCard userId={userId} />
-          </div>
-          <div className="md:col-span-2">
-            <TurnBack userId={userId} />
+        </div>
+
+        {/* Row 2: the trip. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
+          <div className="lg:col-span-2 lg:row-span-2">
+            <CommuteCard commute={data.sections.calendar_commute} />
           </div>
           <GearChecklistCard gear={data.sections.required_gear_checklist} />
           <ShoppingCard shopping={data.sections.errands_and_shopping} />
+        </div>
+
+        {/* Row 3 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
+          <div className="lg:col-span-2">
+            <MapCard userId={userId} />
+          </div>
+          <TurnBack userId={userId} />
         </div>
       </main>
 
@@ -205,7 +221,7 @@ export default function HUD({ data, loading, refreshing, onRefresh, userId = "us
 
 function SkeletonHUD() {
   return (
-    <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 pt-16" aria-busy="true" aria-label="Loading">
+    <div className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-10 pt-16" aria-busy="true" aria-label="Loading">
       <div className="flex flex-col items-center gap-4 mb-12">
         <div className="shimmer h-3 w-32 rounded-full" />
         <div className="shimmer h-14 w-[min(80%,420px)] rounded-2xl" />

@@ -16,7 +16,7 @@ export default function Rise({
 }) {
   return (
     <motion.div
-      className={className}
+      className={`h-full ${className ?? ""}`}
       style={style}
       initial={{ opacity: 0, y: 32, scale: 0.985 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}

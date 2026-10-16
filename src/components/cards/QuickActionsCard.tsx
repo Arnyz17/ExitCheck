@@ -72,7 +72,7 @@ export default function QuickActionsCard({ actions }: { actions: QuickAction[] }
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.96 }}
               transition={{ type: "spring", stiffness: 500, damping: 28 }}
-              className="tile snap-start shrink-0 flex-1 min-w-[148px] p-4 flex items-center gap-3 text-left"
+              className="tile snap-start shrink-0 flex-1 sm:flex-none sm:min-w-[210px] min-w-[148px] p-4 pr-6 flex items-center gap-3 text-left"
             >
               <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style={{ background: soft }}>
                 <AnimatePresence mode="wait" initial={false}>

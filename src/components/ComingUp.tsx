@@ -66,7 +66,7 @@ export default function ComingUp({ userId }: { userId: string }) {
 
   return (
     <Rise>
-      <section className="tile p-7">
+      <section className="tile p-7 lg:p-9 h-full flex flex-col">
         <p className="eyebrow">What&apos;s coming up</p>
 
         <div className="grid md:grid-cols-2 gap-8 mt-5">

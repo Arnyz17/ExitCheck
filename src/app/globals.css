@@ -140,3 +140,8 @@ button:disabled { cursor: default; }
 .leaflet-container { font-family: inherit; }
 .leaflet-popup-content-wrapper { border-radius: 14px; }
 .map-tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.8); }
+
+@media (hover: hover) and (min-width: 1024px) {
+  .tile { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 2px 6px rgba(0,0,0,0.04), 0 18px 44px rgba(0,0,0,0.12); }
+}
