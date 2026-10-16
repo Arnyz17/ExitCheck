@@ -79,7 +79,7 @@ export default function QuickActionsCard({ actions }: { actions: QuickAction[] }
           );
         })}
       </div>
-      <p aria-live="polite" className="text-[13px] mt-2 px-1 min-h-[18px]" style={{ color: "var(--text-2)" }}>
+      <p aria-live="polite" className="text-[13px] px-1" style={{ color: "var(--text-2)", marginTop: message ? 8 : 0 }}>
         {message}
       </p>
     </section>
