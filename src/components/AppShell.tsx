@@ -18,6 +18,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
+
+  useEffect(() => {
     try {
       const accent = localStorage.getItem("exitcheck.accent");
       if (accent) document.documentElement.style.setProperty("--blue", accent);

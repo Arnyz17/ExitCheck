@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "ExitCheck",
   description: "Everything you need to know before you walk out the door.",
   manifest: "/manifest.json",
+  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

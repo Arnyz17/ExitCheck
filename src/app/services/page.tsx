@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { Plus, Trash2, Loader2, Calendar, CloudSun, House, Webhook, Command, ExternalLink, Play, Router, Lightbulb, Check } from "lucide-react";
+import { Plus, Trash2, Loader2, Calendar, CloudSun, House, Webhook, Command, ExternalLink, Play, Router, Lightbulb, Check, Package } from "lucide-react";
 import Sheet from "@/components/Sheet";
 import Rise from "@/components/Rise";
+import BrandIcon from "@/components/BrandIcon";
 import { useToast } from "@/components/Toast";
 import { ICON_NAMES, iconFor } from "@/lib/icons";
 import { isEnabled } from "@/lib/services";
@@ -252,6 +253,40 @@ export default function ServicesPage() {
           </Rise>
         ))}
       </div>
+
+      <Rise>
+        <div className="mt-14 mb-4 px-1">
+          <p className="eyebrow">Overview</p>
+          <h2 className="headline mt-1">Everything at a glance</h2>
+        </div>
+      </Rise>
+      <Rise>
+        <div className="tile overflow-hidden">
+          {[
+            { icon: <Calendar className="w-5 h-5" style={{ color: "var(--blue)" }} />, name: "Google Calendar", state: session ? "Connected" : "Not connected", on: !!session },
+            { icon: <CloudSun className="w-5 h-5" style={{ color: "var(--blue)" }} />, name: "Weather", state: rows && isEnabled("weather_api", rows) ? "On" : "Off", on: !!rows && isEnabled("weather_api", rows) },
+            { icon: <Router className="w-5 h-5" style={{ color: "var(--blue)" }} />, name: "Home Assistant", state: devices.some((d) => d.provider === "home_assistant") ? "Connected" : "Not connected", on: devices.some((d) => d.provider === "home_assistant") },
+            { icon: <BrandIcon brand="govee" size={20} />, name: "Govee", state: devices.some((d) => d.provider === "govee") ? "Connected" : "Not connected", on: devices.some((d) => d.provider === "govee") },
+            { icon: <BrandIcon brand="imessage" size={20} />, name: "Messages", state: "Reply reminders open the chat", on: true },
+            { icon: <BrandIcon brand="netflix" size={20} />, name: "Netflix", state: "Saved titles open the app", on: true },
+            { icon: <BrandIcon brand="bosch" size={20} />, name: "Bosch appliances", state: "Not linked", on: false },
+            { icon: <Package className="w-5 h-5" style={{ color: "var(--blue)" }} />, name: "BuildingLink", state: "Not linked", on: false },
+          ].map((r, i) => (
+            <div key={r.name} className={`flex items-center gap-4 px-5 py-4 ${i > 0 ? "hairline" : ""}`}>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--surface-2)" }}>
+                {r.icon}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[16px] font-medium">{r.name}</span>
+                <span className="block text-[13px]" style={{ color: r.on ? "var(--green)" : "var(--text-2)" }}>
+                  {r.state}
+                </span>
+              </span>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: r.on ? "var(--green)" : "var(--text-3)" }} />
+            </div>
+          ))}
+        </div>
+      </Rise>
 
       <Rise>
         <div className="mt-16 mb-4 px-1">

@@ -21,6 +21,16 @@ Optional environment variables (`.env.local`):
 | `GEMINI_MODEL` | Override the model (default `gemini-3.8-flash`). |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Google sign-in for Calendar. |
 
+## Run it on your phone
+
+```bash
+npm run phone
+```
+
+It builds the app, serves it on your network, and prints a link plus a QR code. Scan it with your iPhone camera (same Wi-Fi), open it, then Share -> Add to Home Screen to install it as an app.
+
+Location, alerts and writing NFC stickers need HTTPS. Install `cloudflared` (`brew install cloudflared`) and `npm run phone` will also print a secure public link.
+
 ## What it does
 
 - **Today**: readiness score (0-100), alerts, quick actions, weather, home status, commute, errands, packing checklist.
