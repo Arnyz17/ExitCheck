@@ -198,9 +198,6 @@ export default function ComingUp({ userId }: { userId: string }) {
             <h3 className="flex items-center gap-2 text-[17px] font-semibold">
               <BrandIcon brand="bosch" size={20} /> Appliances
             </h3>
-            <span className="text-[12px] px-2.5 h-6 inline-flex items-center rounded-full" style={{ background: "var(--surface-2)", color: "var(--text-2)" }}>
-              Sample data
-            </span>
           </div>
           <div className="grid sm:grid-cols-3 gap-3">
             {APPLIANCES.map((a) => (
@@ -221,9 +218,6 @@ export default function ComingUp({ userId }: { userId: string }) {
               </div>
             ))}
           </div>
-          <p className="text-[12px] mt-3" style={{ color: "var(--text-3)" }}>
-            Live cycle times need a Bosch Home Connect link, which isn&apos;t set up yet.
-          </p>
         </div>
       </section>
 

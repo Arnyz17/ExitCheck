@@ -38,7 +38,7 @@ export default function BuildingNotice() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--text-2)" }}>
-              BuildingLink · Sample
+              BuildingLink
             </p>
             <p className="text-[18px] font-semibold leading-snug">2 packages are waiting at the Tower 2 lobby</p>
             <p className="text-[15px] mt-0.5" style={{ color: "var(--blue)" }}>
