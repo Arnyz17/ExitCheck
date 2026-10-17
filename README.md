@@ -8,7 +8,8 @@ No account needed to try it. Open the app and it works.
 
 ```bash
 npm install
-npx prisma db push
+cp .env.example .env.local   # add a free Neon Postgres DATABASE_URL
+npm run db:push
 npm run dev          # http://localhost:3000
 npm test             # 21 unit tests
 ```
@@ -20,6 +21,10 @@ Optional environment variables (`.env.local`):
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Lets Gemini write the summary. Without it a deterministic rule engine does. |
 | `GEMINI_MODEL` | Override the model (default `gemini-3.8-flash`). |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Google sign-in for Calendar. |
+
+## Deploy
+
+See [DEPLOY.md](DEPLOY.md) for a permanent Vercel link.
 
 ## Run it on your phone
 
@@ -60,7 +65,7 @@ NFC tap -> /exit?tag_id=...  ->  POST /api/exit
                                    |
         exact facts re-injected (commute, weather, home, actions)
                                    |
-                       scan + trace written to SQLite
+                       scan + trace written to the database
 ```
 
 Design decisions worth knowing:
@@ -79,11 +84,11 @@ Design decisions worth knowing:
 
 ## Stack
 
-Next.js 16, React 19, TypeScript, Tailwind v4, Framer Motion, Prisma + SQLite, NextAuth (Google), Vercel AI SDK + Gemini, Zod, Vitest.
+Next.js 16, React 19, TypeScript, Tailwind v4, Framer Motion, Prisma + Postgres, NextAuth (Google), Vercel AI SDK + Gemini, Zod, Vitest.
 
 ## Resume bullets
 
-- Built an NFC-triggered "leave-the-house" dashboard (Next.js, TypeScript, Prisma/SQLite) that fans out to five data sources in parallel, with per-source fault isolation, geocode caching and a rule-based fallback so every tap returns a valid screen.
+- Built an NFC-triggered "leave-the-house" dashboard (Next.js, TypeScript, Prisma/Postgres) that fans out to five data sources in parallel, with per-source fault isolation, geocode caching and a rule-based fallback so every tap returns a valid screen.
 - Added an LLM summarization layer (Gemini via Vercel AI SDK, Zod-validated output) with a timeout and circuit breaker, and re-injected authoritative data after generation to prevent hallucinated commute and weather facts.
 - Instrumented every request with latency/success tracing and built an Insights dashboard (p50/p95, source reliability, request waterfall); wrote 21 unit tests covering the rule engine, scoring and analytics.
 - Designed a personalized, animated Apple-style UI with per-sticker checklists, webhook/Shortcut/deep-link actions, and Google OAuth Calendar integration.

@@ -45,3 +45,4 @@ next-env.d.ts
 *.db-journal
 test_screenshot.png
 
+!.env.example
